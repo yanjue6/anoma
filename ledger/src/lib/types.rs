@@ -11,6 +11,12 @@ pub struct Transaction {
     pub amount: u64,
 }
 
+#[derive(Clone, Eq, PartialEq, Message)]
+pub struct Intent {
+    #[prost(string)]
+    pub msg: String,
+}
+
 #[test]
 fn encoding_round_trip() {
     let tx = Transaction {

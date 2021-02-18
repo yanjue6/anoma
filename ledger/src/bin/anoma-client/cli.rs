@@ -1,8 +1,8 @@
 //! The docstrings on types and their fields with `derive(Clap)` are displayed
 //! in the CLI `--help`.
 
-use anoma::cli::{ClientOpts, InlinedClientOpts, Transfer};
-use anoma::types::{Message, Transaction};
+use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
+use anoma::types::{Intent, Message, Transaction};
 use clap::Clap;
 use tendermint_rpc::{Client, HttpClient};
 
@@ -15,6 +15,10 @@ pub async fn main() {
 async fn exec_inlined(ops: InlinedClientOpts) {
     match ops {
         InlinedClientOpts::Transfer(transaction) => transfer(transaction).await,
+        InlinedClientOpts::Gossip(Gossip {
+            orderbook_addr,
+            msg,
+        }) => gossip(orderbook_addr, msg).await,
     }
 }
 
@@ -29,3 +33,5 @@ async fn transfer(Transfer { src, dest, amount }: Transfer) {
     let response = client.broadcast_tx_commit(tx_bytes.into()).await;
     println!("{:#?}", response);
 }
+
+async fn gossip(_orderbook_addr: String, _msg: String) {}

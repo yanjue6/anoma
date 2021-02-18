@@ -1,6 +1,7 @@
 use anoma::config::Config;
 
 mod cli;
+mod gossip;
 mod shell;
 
 fn main() {

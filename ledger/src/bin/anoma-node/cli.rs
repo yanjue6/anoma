@@ -7,6 +7,7 @@ use anoma::{
 };
 use clap::Clap;
 
+use crate::gossip;
 use crate::shell;
 
 pub fn main(config: Config) {
@@ -17,7 +18,8 @@ pub fn main(config: Config) {
 
 fn exec_inlined(config: Config, ops: InlinedNodeOpts) {
     match ops {
-        InlinedNodeOpts::Run => shell::run(config),
-        InlinedNodeOpts::Reset => shell::reset(config),
-    }
+        InlinedNodeOpts::RunOrderbook(arg) => gossip::run(arg.peer_addr),
+        InlinedNodeOpts::RunAnoma => Ok(shell::run(config)),
+        InlinedNodeOpts::ResetAnoma => Ok(shell::reset(config)),
+    };
 }

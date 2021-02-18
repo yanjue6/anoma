@@ -58,6 +58,9 @@ sha2 = "0.9.3"
 sparse-merkle-tree = {git = "https://github.com/heliaxdev/sparse-merkle-tree", branch = "tomas/encoding", features = ["with_borsh"]}
 tendermint-rpc = {version = "0.18.0", features = ["http-client"]}
 tokio = {version = "1.0", features = ["full"]}
+async-std = "1.9.0"
+libp2p = "0.35.0"
+io = "0.0.2"
 
 [dev-dependencies]
 cargo-watch = "7.5.0"
