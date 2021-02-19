@@ -18,7 +18,9 @@ pub fn main(config: Config) {
 
 fn exec_inlined(config: Config, ops: InlinedNodeOpts) {
     match ops {
-        InlinedNodeOpts::RunOrderbook(arg) => gossip::run(arg.peer_addr),
+        InlinedNodeOpts::RunOrderbook(arg) => {
+            gossip::run(config, arg.peer_addr)
+        }
         InlinedNodeOpts::RunAnoma => Ok(shell::run(config)),
         InlinedNodeOpts::ResetAnoma => Ok(shell::reset(config)),
     };

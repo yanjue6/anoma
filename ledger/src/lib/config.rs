@@ -21,4 +21,7 @@ impl Config {
     pub fn tendermint_home_dir(&self) -> PathBuf {
         self.home_dir.join("tendermint")
     }
+    pub fn orderbook_home_dir(&self) -> PathBuf {
+        self.home_dir.join("orderbook")
+    }
 }

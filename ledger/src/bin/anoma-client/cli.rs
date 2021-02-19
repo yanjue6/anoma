@@ -4,6 +4,12 @@
 use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
 use anoma::types::{Intent, Message, Transaction};
 use clap::Clap;
+use libp2p::gossipsub::{
+    Gossipsub, GossipsubEvent, GossipsubMessage, IdentTopic as Topic,
+    MessageAuthenticity, ValidationMode,
+};
+use libp2p::{gossipsub, identity, PeerId};
+use reqwest;
 use tendermint_rpc::{Client, HttpClient};
 
 pub async fn main() {
@@ -34,4 +40,16 @@ async fn transfer(Transfer { src, dest, amount }: Transfer) {
     println!("{:#?}", response);
 }
 
-async fn gossip(_orderbook_addr: String, _msg: String) {}
+async fn gossip(orderbook_addr: String, msg: String) {
+    let local_key = identity::Keypair::generate_ed25519();
+    let peerId = PeerId::from_public_key(local_key.public());
+    let tix = Intent { msg };
+    let mut tix_bytes = vec![];
+    tix.encode(&mut tix_bytes).unwrap();
+    let response = reqwest::Client::new()
+        .post(&orderbook_addr)
+        .body(tix_bytes)
+        .send()
+        .await;
+    println!("{:#?}", response);
+}

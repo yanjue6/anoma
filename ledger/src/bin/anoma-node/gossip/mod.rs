@@ -1,12 +1,17 @@
+mod dkg;
+mod orderbook;
+
 use anoma::types::{Intent, Message};
+use anoma::{config::Config, genesis::Validator};
 use async_std::{io, task};
 use futures::prelude::*;
 use libp2p::gossipsub::MessageId;
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubEvent, GossipsubMessage, IdentTopic as Topic,
-    MessageAuthenticity, ValidationMode,
+    GossipsubEvent, GossipsubMessage, IdentTopic as Topic, MessageAuthenticity,
+    TopicHash, ValidationMode,
 };
 use libp2p::{gossipsub, identity, PeerId};
+use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
@@ -14,20 +19,54 @@ use std::{
     error::Error,
     task::{Context, Poll},
 };
+use std::{fs::File, io::Write, path::PathBuf};
 
-pub fn run(peer_addr: Option<String>) -> Result<(), Box<dyn Error>> {
-    let mut gossip = Gossip::new()?;
-    libp2p::Swarm::listen_on(
-        &mut gossip.swarm,
-        "/ip4/0.0.0.0/tcp/0".parse().unwrap(),
+pub fn run(
+    config: Config,
+    peer_addr: Option<String>,
+) -> Result<(), Box<dyn Error>> {
+    let home_dir = config.orderbook_home_dir();
+
+    let gossip = GossipNode::new()?;
+
+    // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
+    let transport =
+        libp2p::build_development_transport(gossip.local_key.clone())?;
+
+    // Set a custom gossipsub
+    let gossipsub_config = gossipsub::GossipsubConfigBuilder::default()
+        .heartbeat_interval(Duration::from_secs(10))
+        .validation_mode(ValidationMode::None)
+        // To content-address message, we can take the hash of message and use it as an ID.
+        .message_id_fn(|message: &GossipsubMessage| -> MessageId {
+            let mut s = DefaultHasher::new();
+            message.data.hash(&mut s);
+            MessageId::from(s.finish().to_string())
+        })
+        .build()
+        .expect("Valid config");
+    // build a gossipsub network behaviour
+    let mut gossipsub: gossipsub::Gossipsub = gossipsub::Gossipsub::new(
+        MessageAuthenticity::Anonymous,
+        gossipsub_config,
     )
-    .unwrap();
+    .expect("Correct configuration");
+
+    // subscribes to our topic
+    gossipsub.subscribe(&gossip.topic).unwrap();
+
+    // Create a Swarm to manage peers and events
+    let mut swarm =
+        libp2p::Swarm::new(transport, gossipsub, gossip.local_peer_id);
+
+    libp2p::Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap())
+        .unwrap();
 
     if let Some(to_dial) = peer_addr {
         let dialing = to_dial.clone();
         match to_dial.parse() {
             Ok(to_dial) => {
-                match libp2p::Swarm::dial_addr(&mut gossip.swarm, to_dial) {
+                match libp2p::Swarm::dial_addr(&mut swarm, to_dial) {
                     Ok(_) => println!("Dialed {:?}", dialing),
                     Err(e) => println!("Dial {:?} failed: {:?}", dialing, e),
                 }
@@ -48,7 +87,7 @@ pub fn run(peer_addr: Option<String>) -> Result<(), Box<dyn Error>> {
                     let tix = Intent { msg: line };
                     let mut tix_bytes = vec![];
                     tix.encode(&mut tix_bytes).unwrap();
-                    gossip.swarm.publish(gossip.topic.clone(), tix_bytes)
+                    swarm.publish(gossip.topic.clone(), tix_bytes)
                 }
                 Poll::Ready(None) => panic!("Stdin closed"),
                 Poll::Pending => break,
@@ -58,34 +97,41 @@ pub fn run(peer_addr: Option<String>) -> Result<(), Box<dyn Error>> {
         }
 
         loop {
-            match gossip.swarm.poll_next_unpin(cx) {
-                Poll::Ready(Some(gossip_event)) => match gossip_event {
-                    GossipsubEvent::Message {
-                        propagation_source: peer_id,
-                        message_id: id,
-                        message,
-                    } => {
-                        let tx =
-                            Intent::decode(&message.data[..]).map_err(|e| {
-                                format!(
-                            "Error decoding a intent: {}, from bytes {:?}",
-                            e, message
-                        )
-                            })?;
-                        println!(
-                            "Got message: {:?} with id: {} from peer: {:?}",
-                            tx, id, peer_id
-                        );
-                        gossip.mempool.push(tx)
-                    }
-                    _ => {}
-                },
+            match swarm.poll_next_unpin(cx) {
                 Poll::Ready(None) | Poll::Pending => break,
+                Poll::Ready(Some(GossipsubEvent::Message {
+                    propagation_source,
+                    message_id,
+                    message:
+                        GossipsubMessage {
+                            data,
+                            topic: topic_hash,
+                            ..
+                        },
+                })) => {
+                    println!(
+                        "Got message of id: {} from peer: {:?}",
+                        message_id, propagation_source,
+                    );
+                    if TopicHash::from(Topic::new(orderbook::TOPIC))
+                        == topic_hash
+                    {
+                        let tx = orderbook::apply(data);
+                        println!("message: {:?}", tx);
+                    } else if TopicHash::from(Topic::new(dkg::TOPIC))
+                        == topic_hash
+                    {
+                        let tx = dkg::apply(data);
+                        println!("Got message: {:?}", tx);
+                    } else {
+                    };
+                }
+                _ => {}
             }
         }
 
         if !listening {
-            for addr in libp2p::Swarm::listeners(&gossip.swarm) {
+            for addr in libp2p::Swarm::listeners(&swarm) {
                 println!("Listening on {:?}", addr);
                 listening = true;
             }
@@ -95,63 +141,45 @@ pub fn run(peer_addr: Option<String>) -> Result<(), Box<dyn Error>> {
     }))
 }
 
-pub struct Gossip {
+pub struct GossipNode {
     local_key: identity::Keypair,
     local_peer_id: PeerId,
     topic: Topic,
-    swarm: libp2p::Swarm<Gossipsub>,
-    mempool: Vec<Intent>,
 }
 
-impl Gossip {
+impl GossipNode {
     pub fn new() -> Result<Self, Box<dyn Error>> {
         let local_key = identity::Keypair::generate_ed25519();
         let local_peer_id = PeerId::from(local_key.public());
         println!("Local peer id: {:?}", local_peer_id);
 
         // Create a Gossipsub topic
-        let topic = Topic::new("test-net");
-
-        // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
-        let transport = libp2p::build_development_transport(local_key.clone())?;
-
-        // Create a Swarm to manage peers and events
-        let swarm = {
-            // To content-address message, we can take the hash of message and use it as an ID.
-            let message_id_fn = |message: &GossipsubMessage| {
-                let mut s = DefaultHasher::new();
-                message.data.hash(&mut s);
-                MessageId::from(s.finish().to_string())
-            };
-
-            // Set a custom gossipsub
-            let gossipsub_config = gossipsub::GossipsubConfigBuilder::default()
-                .heartbeat_interval(Duration::from_secs(10))
-                .validation_mode(ValidationMode::None)
-                .message_id_fn(message_id_fn)
-                .build()
-                .expect("Valid config");
-            // build a gossipsub network behaviour
-            let mut gossipsub: gossipsub::Gossipsub =
-                gossipsub::Gossipsub::new(
-                    MessageAuthenticity::Anonymous,
-                    gossipsub_config,
-                )
-                .expect("Correct configuration");
-
-            // subscribes to our topic
-            gossipsub.subscribe(&topic).unwrap();
-
-            // build the swarm
-            libp2p::Swarm::new(transport, gossipsub, local_peer_id)
-        };
+        let topic = Topic::new(orderbook::TOPIC);
 
         Ok(Self {
             local_key,
             local_peer_id,
             topic,
-            swarm,
-            mempool: Vec::new(),
         })
     }
+}
+
+fn write_peer_key(home_dir: PathBuf, account: &Validator) -> io::Result<()> {
+    let path = home_dir.join("config").join("priv_validator_key.json");
+    let mut file = File::create(path)?;
+    let pk = base64::encode(account.keypair.public.as_bytes());
+    let sk = base64::encode(account.keypair.to_bytes());
+    let key = json!({
+        "address": account.address,
+        "pub_key": {
+            "type": "tendermint/PubKeyEd25519",
+            "value": pk,
+        },
+        "priv_key": {
+            "type": "tendermint/PrivKeyEd25519",
+            "value": sk,
+        }
+    });
+    println!("key {}", key);
+    file.write(key.to_string().as_bytes()).map(|_| ())
 }

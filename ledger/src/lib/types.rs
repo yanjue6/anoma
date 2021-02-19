@@ -17,6 +17,12 @@ pub struct Intent {
     pub msg: String,
 }
 
+#[derive(Clone, Eq, PartialEq, Message)]
+pub struct Dkg {
+    #[prost(string)]
+    pub msg: String,
+}
+
 #[test]
 fn encoding_round_trip() {
     let tx = Transaction {
