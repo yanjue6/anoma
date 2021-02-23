@@ -21,7 +21,6 @@ pub enum AnomaOpts {
     Node(LazyOpt),
     /// Anoma client commands
     Client(LazyOpt),
-    #[clap(flatten)]
     InlinedNode(NodeOpts),
     #[clap(flatten)]
     InlinedClient(ClientOpts),
@@ -58,10 +57,10 @@ pub struct Transfer {
 }
 // `anomac` subcommand for controlling intent
 #[derive(Clap)]
-pub struct Gossip{
+pub struct Gossip {
     /// An example command
     #[clap(short, long)]
-    pub orderbook_addr: String,
+    pub orderbook: String,
     #[clap(short, long)]
     pub msg: String,
 }
@@ -69,9 +68,11 @@ pub struct Gossip{
 /// The Anoma Node CLI
 #[derive(Clap)]
 #[clap(version = "1.0", author = AUTHOR)]
-pub enum NodeOpts {
+pub struct NodeOpts {
+    #[clap(short, long)]
+    pub base_dir: Option<String>,
     #[clap(flatten)]
-    Inlined(InlinedNodeOpts),
+    pub ops: InlinedNodeOpts,
 }
 
 // `anomad` commands inlined in `anoma`
@@ -84,10 +85,15 @@ pub enum InlinedNodeOpts {
     /// Reset any store state
     ResetAnoma,
 }
+
 #[derive(Clap)]
 pub struct Orderbook {
     #[clap(short, long)]
-    pub peer_addr: Option<String>,
+    pub local_address: Option<String>,
+    #[clap(short, long)]
+    pub peers: Option<Vec<String>>,
+    #[clap(short, long)]
+    pub topics: Option<Vec<String>>,
 }
 
 /// The lazy opt is used for node and client sub-commands, it doesn't actually

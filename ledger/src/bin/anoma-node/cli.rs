@@ -11,15 +11,15 @@ use crate::gossip;
 use crate::shell;
 
 pub fn main(config: Config) {
-    match NodeOpts::parse() {
-        NodeOpts::Inlined(ops) => exec_inlined(config, ops),
-    }
+    let NodeOpts { base_dir, ops } = NodeOpts::parse();
+    let config = base_dir.map(|dir| Config::new(dir)).unwrap_or(config);
+    exec_inlined(config, ops)
 }
 
 fn exec_inlined(config: Config, ops: InlinedNodeOpts) {
-    match ops {
+    let _exec = match ops {
         InlinedNodeOpts::RunOrderbook(arg) => {
-            gossip::run(config, arg.peer_addr)
+            gossip::run(config, arg.local_address, arg.peers, arg.topics)
         }
         InlinedNodeOpts::RunAnoma => Ok(shell::run(config)),
         InlinedNodeOpts::ResetAnoma => Ok(shell::reset(config)),

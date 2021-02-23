@@ -5,6 +5,7 @@ use ed25519_dalek::Keypair;
 #[cfg(not(feature = "dev"))]
 use ed25519_dalek::PublicKey;
 use rand::{prelude::ThreadRng, thread_rng};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 #[cfg(not(feature = "dev"))]
@@ -40,7 +41,7 @@ pub struct Validator {
     pub voting_power: u64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Bookkeeper {
     pub address: String,
     pub keypair: Keypair,
@@ -126,8 +127,7 @@ pub fn orderbook_genesis() -> OrderbookGenesis {
 
 impl Bookkeeper {
     // Generates a new orderbook
-    #[allow(dead_code)]
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut rng: ThreadRng = thread_rng();
         let keypair = Keypair::generate(&mut rng);
         let mut hasher = Sha256::new();
