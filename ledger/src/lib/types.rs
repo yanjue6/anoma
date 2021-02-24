@@ -1,5 +1,6 @@
 use prost;
 pub use prost::Message;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct Transaction {
@@ -11,9 +12,8 @@ pub struct Transaction {
     pub amount: u64,
 }
 
-#[derive(Clone, Eq, PartialEq, Message)]
+#[derive(Serialize, Deserialize)]
 pub struct Intent {
-    #[prost(string)]
     pub msg: String,
 }
 
