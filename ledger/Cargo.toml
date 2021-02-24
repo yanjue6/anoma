@@ -63,8 +63,12 @@ libp2p = "0.35.0"
 io = "0.0.2"
 serde = "1.0.123"
 reqwest = "0.11.0"
+tonic = "0.4.0"
 
 [dev-dependencies]
 cargo-watch = "7.5.0"
 clippy = "0.0.302"
 rustfmt = "0.10.0"
+
+[build-dependencies]
+tonic-build = {version = "0.4.0", features = ["prost"]}

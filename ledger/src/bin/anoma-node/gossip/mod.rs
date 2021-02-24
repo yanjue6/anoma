@@ -1,5 +1,8 @@
 mod dkg;
 mod orderbook;
+pub mod rpc {
+    tonic::include_proto!("hello");
+}
 
 use anoma::types::{Intent, Message};
 use anoma::{config::*, genesis::Bookkeeper};
@@ -16,6 +19,8 @@ use libp2p::{
     NetworkBehaviour, PeerId,
 };
 
+use rpc::say_server::{Say, SayServer};
+use rpc::{SayRequest, SayResponse};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
@@ -26,6 +31,9 @@ use std::hash::{Hash, Hasher};
 use std::task::{Context, Poll};
 use std::time::Duration;
 use std::{error::Error, io::Write, path::PathBuf};
+use tokio::sync::mpsc;
+use tonic::transport::Server;
+use tonic::{Request, Response, Status};
 
 pub fn run(
     config: Config,
@@ -55,25 +63,11 @@ pub fn run(
     // Read full lines from stdin
     let mut stdin = io::BufReader::new(io::stdin()).lines();
 
+    let _res = rpc_server();
+
     // Kick it off
     let mut listening = false;
     task::block_on(future::poll_fn(move |cx: &mut Context<'_>| {
-        loop {
-            if let Err(e) = match stdin.try_poll_next_unpin(cx)? {
-                Poll::Ready(Some(line)) => {
-                    let tix = Intent { msg: line };
-                    let mut tix_bytes = vec![];
-                    tix.encode(&mut tix_bytes).unwrap();
-                    swarm
-                        .gossipsub
-                        .publish(Topic::new(orderbook::TOPIC), tix_bytes)
-                }
-                Poll::Ready(None) => panic!("Stdin closed"),
-                Poll::Pending => break,
-            } {
-                println!("Publish error: {:?}", e);
-            }
-        }
         loop {
             match swarm.poll_next_unpin(cx) {
                 Poll::Ready(Some(event)) => println!("{:?}", event),
@@ -91,6 +85,34 @@ pub fn run(
         }
         Poll::Pending
     }))
+}
+
+#[derive(Debug)]
+struct RpcService;
+
+#[tonic::async_trait]
+impl Say for RpcService {
+    async fn send(
+        &self,
+        request: tonic::Request<SayRequest>,
+    ) -> Result<tonic::Response<SayResponse>, tonic::Status> {
+        let SayRequest { name } = request.get_ref();
+        println!("received a message {}", name);
+        Ok(Response::new(SayResponse::default()))
+    }
+}
+
+#[tokio::main]
+async fn rpc_server() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "[::1]:39111".parse().unwrap();
+
+    let rpc = RpcService {};
+
+    let svc = SayServer::new(rpc);
+
+    Server::builder().add_service(svc).serve(addr).await?;
+
+    Ok(())
 }
 
 fn prepare_swarm(

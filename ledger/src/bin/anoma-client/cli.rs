@@ -1,6 +1,12 @@
 //! The docstrings on types and their fields with `derive(Clap)` are displayed
 //! in the CLI `--help`.
 
+pub mod rpc {
+    tonic::include_proto!("hello");
+}
+use rpc::say_client::SayClient;
+use rpc::{SayRequest, SayResponse};
+
 use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
 use anoma::types::{Intent, Message, Transaction};
 use clap::Clap;
@@ -17,7 +23,7 @@ async fn exec_inlined(ops: InlinedClientOpts) {
     match ops {
         InlinedClientOpts::Transfer(transaction) => transfer(transaction).await,
         InlinedClientOpts::Gossip(Gossip { orderbook, msg }) => {
-            gossip(orderbook, msg).await
+            let _res = gossip(orderbook, msg).await;
         }
     }
 }
@@ -34,14 +40,11 @@ async fn transfer(Transfer { src, dest, amount }: Transfer) {
     println!("{:#?}", response);
 }
 
-async fn gossip(orderbook_addr: String, msg: String) {
-    let tix = Intent { msg };
-    let mut tix_bytes = vec![];
-    tix.encode(&mut tix_bytes).unwrap();
-    let response = reqwest::Client::new()
-        .post(&orderbook_addr)
-        .body(tix_bytes)
-        .send()
-        .await;
-    println!("{:#?}", response);
+async fn gossip(
+    _orderbook_addr: String,
+    msg: String,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = SayClient::connect("http://[::1]:39111").await?;
+    let _response = client.send(SayRequest { name: msg }).await?;
+    Ok(())
 }
