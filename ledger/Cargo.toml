@@ -63,8 +63,6 @@ libp2p = "0.35.0"
 io = "0.0.2"
 serde = "1.0.123"
 reqwest = "0.11.0"
-tarpc = { version = "0.24", features = ["full"] }
-tokio-serde = { optional = true, version = "0.8" }
 
 [dev-dependencies]
 cargo-watch = "7.5.0"
