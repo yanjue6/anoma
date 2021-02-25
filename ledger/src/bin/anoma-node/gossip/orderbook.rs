@@ -1,5 +1,7 @@
-use anoma::types::{Intent, Message};
-use prost;
+pub mod rpc {
+    tonic::include_proto!("gossip");
+}
+use rpc::{Intent, Response, Dkg};
 
 pub const TOPIC: &str = "orderbook";
 

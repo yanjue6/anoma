@@ -1,10 +1,9 @@
 mod dkg;
 mod orderbook;
 pub mod rpc {
-    tonic::include_proto!("hello");
+    tonic::include_proto!("gossip");
 }
 
-use anoma::types::{Intent, Message};
 use anoma::{config::*, genesis::Bookkeeper};
 use async_std::{io, task};
 use futures::{future, prelude::*};
@@ -19,8 +18,8 @@ use libp2p::{
     NetworkBehaviour, PeerId,
 };
 
-use rpc::say_server::{Say, SayServer};
-use rpc::{SayRequest, SayResponse};
+use rpc::gossip_service_server::{GossipService, GossipServiceServer};
+use rpc::{Intent, Response, Dkg};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
@@ -33,7 +32,7 @@ use std::time::Duration;
 use std::{error::Error, io::Write, path::PathBuf};
 use tokio::sync::mpsc;
 use tonic::transport::Server;
-use tonic::{Request, Response, Status};
+use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
 
 pub fn run(
     config: Config,
@@ -91,14 +90,22 @@ pub fn run(
 struct RpcService;
 
 #[tonic::async_trait]
-impl Say for RpcService {
-    async fn send(
+impl GossipService for RpcService {
+    async fn send_intent(
         &self,
-        request: tonic::Request<SayRequest>,
-    ) -> Result<tonic::Response<SayResponse>, tonic::Status> {
-        let SayRequest { name } = request.get_ref();
-        println!("received a message {}", name);
-        Ok(Response::new(SayResponse::default()))
+        request: TonicRequest<Intent>,
+    ) -> Result<TonicResponse<Response>, Status> {
+        let Intent { asset } = request.get_ref();
+        println!("received a intent {}", asset);
+        Ok(TonicResponse::new(Response::default()))
+    }
+    async fn send_dkg(
+        &self,
+        request: TonicRequest<Dkg>,
+    ) -> Result<TonicResponse<Response>, Status> {
+        let Dkg { msg } = request.get_ref();
+        println!("received a intent {}", msg);
+        Ok(TonicResponse::new(Response::default()))
     }
 }
 
@@ -108,7 +115,7 @@ async fn rpc_server() -> Result<(), Box<dyn std::error::Error>> {
 
     let rpc = RpcService {};
 
-    let svc = SayServer::new(rpc);
+    let svc = GossipServiceServer::new(rpc);
 
     Server::builder().add_service(svc).serve(addr).await?;
 

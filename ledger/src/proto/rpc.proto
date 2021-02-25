@@ -2,22 +2,29 @@
 syntax = "proto3";
 
 // package name for the buffer will be used later
-package hello;
+package gossip;
 
 // service which can be executed
-service Say {
+service GossipService {
 // function which can be called
-  rpc Send (SayRequest) returns (SayResponse);
+  rpc SendIntent (Intent) returns (Response);
+  rpc SendDkg (Dkg) returns (Response);
 }
 
 // argument
-message SayRequest {
+message Intent {
 // data type and position of data
-  string name = 1;
+  string asset = 1;
+}
+
+// argument
+message Dkg {
+// data type and position of data
+  string msg = 1;
 }
 
 // return value
-message SayResponse {
+message Response {
 // data type and position of data
-  string message = 1;
+  string result = 1;
 }

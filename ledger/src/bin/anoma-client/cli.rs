@@ -2,15 +2,14 @@
 //! in the CLI `--help`.
 
 pub mod rpc {
-    tonic::include_proto!("hello");
+    tonic::include_proto!("gossip");
 }
-use rpc::say_client::SayClient;
-use rpc::{SayRequest, SayResponse};
+use rpc::gossip_service_client::GossipServiceClient;
+use rpc::{Response, Intent};
 
 use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
-use anoma::types::{Intent, Message, Transaction};
+use anoma::types::{Message, Transaction};
 use clap::Clap;
-use reqwest;
 use tendermint_rpc::{Client, HttpClient};
 
 pub async fn main() {
@@ -44,7 +43,7 @@ async fn gossip(
     _orderbook_addr: String,
     msg: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = SayClient::connect("http://[::1]:39111").await?;
-    let _response = client.send(SayRequest { name: msg }).await?;
+    let mut client = GossipServiceClient::connect("http://[::1]:39111").await?;
+    let _response = client.send(Intent { asset: msg }).await?;
     Ok(())
 }
