@@ -1,8 +1,5 @@
-pub mod protobuf {
-    tonic::include_proto!("gossip");
-}
-use protobuf::{Dkg};
 use prost::Message;
+use protobuf::Dkg;
 
 pub const TOPIC: &str = "dkg";
 

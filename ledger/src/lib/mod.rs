@@ -5,5 +5,5 @@ pub mod bytes;
 pub mod cli;
 pub mod config;
 pub mod genesis;
-pub mod types;
 pub mod protobuf;
+pub mod types;

@@ -1,8 +1,5 @@
-pub mod protobuf {
-    tonic::include_proto!("gossip");
-}
-use protobuf::{Intent};
 use prost::Message;
+use protobuf::Intent;
 
 pub const TOPIC: &str = "orderbook";
 
