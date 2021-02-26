@@ -1,11 +1,7 @@
 //! The docstrings on types and their fields with `derive(Clap)` are displayed
 //! in the CLI `--help`.
-
-pub mod rpc {
-    tonic::include_proto!("gossip");
-}
-use rpc::gossip_service_client::GossipServiceClient;
-use rpc::{Response, Intent};
+use anoma::protobuf::gossip::gossip_service_client::{GossipServiceClient};
+use anoma::protobuf::gossip::{Intent};
 
 use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
 use anoma::types::{Message, Transaction};

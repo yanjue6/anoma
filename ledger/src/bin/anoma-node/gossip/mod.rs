@@ -1,11 +1,6 @@
 mod dkg;
 mod orderbook;
 
-pub mod protobuf {
-    tonic::include_proto!("gossip");
-}
-
-use crate::rpc;
 use anoma::{bookkeeper::Bookkeeper, config::*};
 use async_std::{io, task};
 use futures::{future, prelude::*};
@@ -20,8 +15,6 @@ use libp2p::{
     NetworkBehaviour, PeerId,
 };
 
-use protobuf::gossip_service_server::{GossipService, GossipServiceServer};
-use protobuf::{Dkg, Intent, Response};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::hash_map::DefaultHasher;

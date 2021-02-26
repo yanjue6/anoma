@@ -1,9 +1,5 @@
-pub mod protobuf {
-    tonic::include_proto!("gossip");
-}
-
-use protobuf::gossip_service_server::{GossipService, GossipServiceServer};
-use protobuf::{Dkg, Intent, Response};
+use anoma::protobuf::gossip::gossip_service_server::{GossipService, GossipServiceServer};
+use anoma::protobuf::gossip::{Dkg, Intent, Response};
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
 use tonic::transport::Server;
 
