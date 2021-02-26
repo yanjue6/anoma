@@ -4,22 +4,22 @@ pub mod rpc {
     tonic::include_proto!("gossip");
 }
 
-use anoma::{config::*, genesis::Bookkeeper};
+use anoma::{bookkeeper::Bookkeeper, config::*};
 use async_std::{io, task};
 use futures::{future, prelude::*};
 use libp2p::gossipsub::{
     Gossipsub, GossipsubEvent, GossipsubMessage, IdentTopic as Topic,
     MessageAuthenticity, MessageId, TopicHash, ValidationMode,
 };
+use libp2p::identity::Keypair::Ed25519;
 use libp2p::{
     gossipsub::{self},
-    identity,
     swarm::{NetworkBehaviourEventProcess, Swarm},
     NetworkBehaviour, PeerId,
 };
 
 use rpc::gossip_service_server::{GossipService, GossipServiceServer};
-use rpc::{Intent, Response, Dkg};
+use rpc::{Dkg, Intent, Response};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::hash_map::DefaultHasher;
@@ -30,7 +30,6 @@ use std::hash::{Hash, Hasher};
 use std::task::{Context, Poll};
 use std::time::Duration;
 use std::{error::Error, io::Write, path::PathBuf};
-use tokio::sync::mpsc;
 use tonic::transport::Server;
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
 
@@ -50,17 +49,7 @@ pub fn run(
 
     println!("Config {:?}", gossip_config);
 
-    let mut bytes_key = bookkeeper.keypair.to_bytes();
-    let key: identity::Keypair = libp2p::identity::Keypair::Ed25519(
-        identity::ed25519::Keypair::decode(&mut bytes_key[..])?,
-    );
-
-    let local_peer_id = PeerId::from(key.public());
-
-    let mut swarm = prepare_swarm(key, local_peer_id, gossip_config)?;
-
-    // Read full lines from stdin
-    let mut stdin = io::BufReader::new(io::stdin()).lines();
+    let mut swarm = prepare_swarm(bookkeeper, gossip_config)?;
 
     let _res = rpc_server();
 
@@ -123,12 +112,14 @@ async fn rpc_server() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn prepare_swarm(
-    key: identity::Keypair,
-    local_peer_id: PeerId,
+    bookkeeper: Bookkeeper,
     gossip_config: GossipConfig,
 ) -> std::io::Result<Swarm<MyBehaviour>> {
     // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
-    let transport = libp2p::build_development_transport(key)?;
+    let keypair = Ed25519(bookkeeper.key);
+    let local_peer_id = PeerId::from(keypair.public());
+
+    let transport = libp2p::build_development_transport(keypair)?;
 
     let network_behaviour = MyBehaviour::new(&gossip_config);
 

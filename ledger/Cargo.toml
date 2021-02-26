@@ -64,6 +64,7 @@ io = "0.0.2"
 serde = "1.0.123"
 reqwest = "0.11.0"
 tonic = "0.4.0"
+serde_bytes = "0.11.5"
 
 [dev-dependencies]
 cargo-watch = "7.5.0"

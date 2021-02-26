@@ -4,19 +4,13 @@
 use ed25519_dalek::Keypair;
 #[cfg(not(feature = "dev"))]
 use ed25519_dalek::PublicKey;
-use rand::{prelude::ThreadRng, thread_rng};
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 
+use rand::{prelude::ThreadRng, thread_rng};
+use sha2::{Digest, Sha256};
 #[cfg(not(feature = "dev"))]
 #[derive(Debug)]
 pub struct Genesis {
     pub validators: Vec<Validator>,
-}
-
-#[derive(Debug)]
-pub struct OrderbookGenesis {
-    pub bookkeeper: Bookkeeper,
 }
 
 #[cfg(not(feature = "dev"))]
@@ -39,12 +33,6 @@ pub struct Validator {
     pub address: String,
     pub keypair: Keypair,
     pub voting_power: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Bookkeeper {
-    pub address: String,
-    pub keypair: Keypair,
 }
 
 #[cfg(feature = "dev")]
@@ -93,46 +81,5 @@ impl Validator {
             keypair,
             voting_power: 10,
         }
-    }
-}
-
-pub fn orderbook_genesis() -> OrderbookGenesis {
-    // To get fresh key bytes, generate a new bookeeper and print
-    // its keypair with:
-    // ```
-    let bookkeeper = Bookkeeper::new();
-    println!(
-        "keypair {:?}, address {}",
-        bookkeeper.keypair.to_bytes(),
-        bookkeeper.address
-    );
-    // ```
-    // let keypair = Keypair::from_bytes(&[
-    //     // SecretKey bytes
-    //     80, 110, 166, 33, 135, 254, 34, 138, 253, 44, 214, 71, 50, 230, 39, 246,
-    //     124, 201, 68, 138, 194, 251, 192, 36, 55, 160, 211, 68, 65, 189, 121,
-    //     217, // PublicKey bytes
-    //     94, 112, 76, 78, 70, 38, 94, 28, 204, 135, 80, 81, 73, 247, 155, 157,
-    //     46, 65, 77, 1, 164, 227, 128, 109, 252, 101, 240, 167, 57, 1, 193, 208,
-    // ])
-    // .unwrap();
-    // let address = "E62578B4AA08AB8EB12A46DC2F05EAE4622542A7".to_owned();
-    // let validator = Validator {
-    //     address,
-    //     keypair,
-    //     voting_power: 10,
-    // };
-    OrderbookGenesis { bookkeeper }
-}
-
-impl Bookkeeper {
-    // Generates a new orderbook
-    pub fn new() -> Self {
-        let mut rng: ThreadRng = thread_rng();
-        let keypair = Keypair::generate(&mut rng);
-        let mut hasher = Sha256::new();
-        hasher.update(keypair.public.to_bytes());
-        let address = format!("{:.40X}", hasher.finalize());
-        Bookkeeper { address, keypair }
     }
 }
