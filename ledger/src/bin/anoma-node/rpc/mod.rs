@@ -27,7 +27,7 @@ impl GossipService for RpcService {
 }
 
 #[tokio::main]
-async fn rpc_server() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn rpc_server() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:39111".parse().unwrap();
 
     let rpc = RpcService {};

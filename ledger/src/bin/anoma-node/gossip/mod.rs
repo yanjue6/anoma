@@ -3,6 +3,7 @@ mod dkg;
 mod network_behaviour;
 mod orderbook;
 
+use crate::rpc;
 use anoma::{bookkeeper::Bookkeeper, config::*};
 use async_std::{io, task};
 use config::NetworkConfig;
@@ -39,6 +40,8 @@ pub fn run(
         peers,
         topics,
     );
+
+    let _res = rpc::rpc_server();
 
     let mut swarm = prepare_swarm(bookkeeper, network_config)?;
 
