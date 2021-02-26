@@ -1,5 +1,5 @@
+use anoma::protobuf::gossip::Intent;
 use prost::Message;
-use protobuf::Intent;
 
 pub const TOPIC: &str = "orderbook";
 

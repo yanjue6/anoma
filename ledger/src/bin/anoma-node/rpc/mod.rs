@@ -1,13 +1,19 @@
-use anoma::protobuf::gossip::gossip_service_server::{GossipService, GossipServiceServer};
+use anoma::protobuf::gossip::gossip_service_server::{
+    GossipService, GossipServiceServer,
+};
 use anoma::protobuf::gossip::{Dkg, Intent, Response};
-use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
+
+use std::collections::VecDeque;
+use std::ops::Deref;
+use std::sync::Arc;
+use std::sync::Mutex;
+use tokio::sync::mpsc;
 use tonic::transport::Server;
-use crate::gossip::network_behaviour::Behaviour;
-use libp2p;
+use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
 
 #[derive(Debug)]
 struct RpcService {
-    swarm: libp2p::Swarm<Behaviour>,
+    tx: mpsc::Sender<Intent>,
 }
 
 #[tonic::async_trait]
@@ -16,13 +22,11 @@ impl GossipService for RpcService {
         &self,
         request: TonicRequest<Intent>,
     ) -> Result<TonicResponse<Response>, Status> {
-        let Intent { asset } = request.get_ref();
+        let intent = request.get_ref();
 
-        // swarm
-            // .gossipsub
-            // .publish(Topic::new(orderbook::TOPIC), tix_bytes)
+        println!("received a intent {:?}", intent);
 
-        println!("received a intent {}", asset);
+        self.tx.send(intent.clone()).await.unwrap();
         Ok(TonicResponse::new(Response::default()))
     }
     async fn send_dkg(
@@ -36,10 +40,12 @@ impl GossipService for RpcService {
 }
 
 #[tokio::main]
-pub async fn rpc_server(swarm: libp2p::Swarm<Behaviour>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn rpc_server(
+    tx: mpsc::Sender<Intent>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:39111".parse().unwrap();
 
-    let rpc = RpcService { swarm };
+    let rpc = RpcService { tx };
 
     let svc = GossipServiceServer::new(rpc);
 

@@ -3,11 +3,16 @@ mod dkg;
 pub mod network_behaviour;
 mod orderbook;
 
+use crate::gossip::network_behaviour::Behaviour;
 use crate::rpc;
+
+use anoma::protobuf::gossip::{Intent};
 use anoma::{bookkeeper::Bookkeeper, config::*};
 use async_std::{io, task};
 use config::NetworkConfig;
 use futures::{future, prelude::*};
+use libp2p;
+use libp2p::gossipsub::IdentTopic as Topic;
 use libp2p::identity::Keypair::Ed25519;
 use libp2p::{
     gossipsub::{self},
@@ -22,9 +27,13 @@ use std::fs;
 use std::fs::File;
 use std::task::{Context, Poll};
 use std::{error::Error, io::Write, path::PathBuf};
+use tokio::sync::mpsc;
+
+
 
 pub fn run(
     config: Config,
+    rpc: bool,
     local_address: Option<String>,
     peers: Option<Vec<String>>,
     topics: Option<Vec<String>>,
@@ -42,15 +51,43 @@ pub fn run(
     );
 
     let mut swarm = prepare_swarm(bookkeeper, network_config)?;
+    let (tx, mut rx): (mpsc::Sender<Intent>, mpsc::Receiver<Intent>) =
+        mpsc::channel(100);
 
-    let _res = rpc::rpc_server();
+    if rpc {
+        let _res = rpc::rpc_server(tx);
+    }
+
+    // Read full lines from stdin
+    let mut stdin = io::BufReader::new(io::stdin()).lines();
 
     let mut listening = false;
     task::block_on(future::poll_fn(move |cx: &mut Context<'_>| {
         loop {
+            if let Err(e) = match stdin.try_poll_next_unpin(cx)? {
+                Poll::Ready(Some(line)) => {
+                    let tix = Intent { asset: line.clone() };
+                    let mut tix_bytes = vec![];
+                    tix.encode(&mut tix_bytes).unwrap();
+                    println!("Sending {:?}", line);
+                    swarm
+                        .gossipsub
+                        .publish(Topic::new(orderbook::TOPIC), tix_bytes)
+                }
+                Poll::Ready(None) => panic!("Stdin closed"),
+                Poll::Pending => break,
+            } {
+                println!("Publish error: {:?}", e);
+            }
+        }
+        loop {
             match swarm.poll_next_unpin(cx) {
-                Poll::Ready(Some(event)) => println!("{:?}", event),
-                Poll::Ready(None) => return Poll::Ready(Ok(())),
+                Poll::Ready(Some(event)) => {
+                    println!("received gossiped {:?}", event)
+                }
+                Poll::Ready(None) => {
+                    return Poll::Ready(Ok(()));
+                }
                 Poll::Pending => {
                     if !listening {
                         for addr in Swarm::listeners(&swarm) {
@@ -62,6 +99,19 @@ pub fn run(
                 }
             }
         }
+        loop {
+            match rx.poll_recv(cx) {
+                Poll::Ready(Some(event)) => {
+                    println!("received though channel {:?}", event)
+                }
+                Poll::Ready(None) => panic!("Channel closed"),
+
+                Poll::Pending => {
+                    break;
+                }
+            }
+        }
+
         Poll::Pending
     }))
 }

@@ -1,5 +1,5 @@
+use anoma::protobuf::gossip::Dkg;
 use prost::Message;
-use protobuf::Dkg;
 
 pub const TOPIC: &str = "dkg";
 

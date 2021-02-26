@@ -71,6 +71,8 @@ pub struct Gossip {
 pub struct NodeOpts {
     #[clap(short, long)]
     pub base_dir: Option<String>,
+    #[clap(short, long)]
+    pub rpc: bool,
     #[clap(flatten)]
     pub ops: InlinedNodeOpts,
 }

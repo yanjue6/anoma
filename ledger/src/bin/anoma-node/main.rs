@@ -2,8 +2,8 @@ use anoma::config::Config;
 
 mod cli;
 mod gossip;
-mod shell;
 pub mod rpc;
+mod shell;
 
 fn main() {
     // init logging
