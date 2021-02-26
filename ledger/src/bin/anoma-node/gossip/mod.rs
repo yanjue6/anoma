@@ -1,6 +1,6 @@
 mod config;
 mod dkg;
-mod network_behaviour;
+pub mod network_behaviour;
 mod orderbook;
 
 use crate::rpc;
@@ -41,9 +41,9 @@ pub fn run(
         topics,
     );
 
-    let _res = rpc::rpc_server();
-
     let mut swarm = prepare_swarm(bookkeeper, network_config)?;
+
+    let _res = rpc::rpc_server();
 
     let mut listening = false;
     task::block_on(future::poll_fn(move |cx: &mut Context<'_>| {
