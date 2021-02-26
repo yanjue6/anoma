@@ -1,7 +1,7 @@
-pub mod rpc {
+pub mod protobuf {
     tonic::include_proto!("gossip");
 }
-use rpc::{Intent, Response, Dkg};
+use protobuf::{Intent, Response, Dkg};
 use prost::Message;
 
 pub const TOPIC: &str = "dkg";
