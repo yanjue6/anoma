@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use tonic_build;
 
 fn main() {
-    tonic_build::compile_protos("src/proto/rpc.proto")
-        .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
+    tonic_build::configure()
+        .out_dir(PathBuf::from("src/lib/protobuf"))
+        .compile(&["src/proto/gossip.proto"], &["src/proto"])
+        .unwrap();
 }

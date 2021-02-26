@@ -2,6 +2,7 @@ pub mod rpc {
     tonic::include_proto!("gossip");
 }
 use rpc::{Intent, Response, Dkg};
+use prost::Message;
 
 pub const TOPIC: &str = "orderbook";
 

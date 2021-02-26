@@ -44,6 +44,6 @@ async fn gossip(
     msg: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut client = GossipServiceClient::connect("http://[::1]:39111").await?;
-    let _response = client.send(Intent { asset: msg }).await?;
+    let _response = client.send_intent(Intent { asset: msg }).await?;
     Ok(())
 }
