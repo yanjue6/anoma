@@ -160,41 +160,28 @@ fn prepare_swarm(
 
 const BOOKKEEPER_KEY_FILE: &str = "priv_bookkepeer_key.json";
 
-fn read_or_generate_bookkeeper_key(
-    home_dir: &PathBuf,
-) -> Result<Bookkeeper, Box<dyn error::Error>> {
+fn read_or_generate_bookkeeper_key(home_dir: &PathBuf) -> Result<Bookkeeper> {
     if home_dir.join("config").join(BOOKKEEPER_KEY_FILE).exists() {
         println!(
             "Reading key {:?}",
             home_dir.join("config").join(BOOKKEEPER_KEY_FILE)
         );
-        Ok(read_bookkeeper_key(home_dir)?)
+        let home_dir = home_dir;
+        let conf_file = home_dir.join("config").join(BOOKKEEPER_KEY_FILE);
+        let json_string = fs::read_to_string(conf_file.as_path())?;
+        let bookkeeper = serde_json::from_str::<Bookkeeper>(&json_string)?;
+        Ok(bookkeeper)
     } else {
         println!(
             "Generating key {:?}",
             home_dir.join("config").join(BOOKKEEPER_KEY_FILE)
         );
-        let account = Bookkeeper::new();
-        let _write = write_bookkeeper_key(home_dir, &account);
+        let account: Bookkeeper = Bookkeeper::new();
+        let home_dir = home_dir;
+        let path = home_dir.join("config").join(BOOKKEEPER_KEY_FILE);
+        let mut file = File::create(path)?;
+        let json = serde_json::to_string(&account)?;
+        file.write_all(json.as_bytes()).map(|_| ()).unwrap();
         Ok(account)
     }
-}
-
-fn read_bookkeeper_key(
-    home_dir: &PathBuf,
-) -> Result<Bookkeeper, Box<dyn error::Error>> {
-    let conf_file = home_dir.join("config").join(BOOKKEEPER_KEY_FILE);
-    let json_string = fs::read_to_string(conf_file.as_path())?;
-    let bookkeeper = serde_json::from_str::<Bookkeeper>(&json_string)?;
-    Ok(bookkeeper)
-}
-
-fn write_bookkeeper_key(
-    home_dir: &PathBuf,
-    account: &Bookkeeper,
-) -> io::Result<()> {
-    let path = home_dir.join("config").join(BOOKKEEPER_KEY_FILE);
-    let mut file = File::create(path)?;
-    let json = serde_json::to_string(&account)?;
-    file.write_all(json.as_bytes()).map(|_| ())
 }
