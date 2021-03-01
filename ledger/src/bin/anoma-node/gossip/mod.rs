@@ -1,12 +1,12 @@
 mod config;
 mod dkg;
-pub mod network_behaviour;
+mod network_behaviour;
 mod orderbook;
 
 use crate::gossip::network_behaviour::Behaviour;
 use crate::rpc;
 
-use anoma::protobuf::gossip::{Intent};
+use anoma::protobuf::gossip::Intent;
 use anoma::{bookkeeper::Bookkeeper, config::*};
 use async_std::{io, task};
 use config::NetworkConfig;
@@ -14,22 +14,17 @@ use futures::{future, prelude::*};
 use libp2p;
 use libp2p::gossipsub::IdentTopic as Topic;
 use libp2p::identity::Keypair::Ed25519;
-use libp2p::{
-    gossipsub::{self},
-    swarm::{NetworkBehaviourEventProcess, Swarm},
-    NetworkBehaviour, PeerId,
-};
-use serde::Deserialize;
-use serde_json::json;
-use std::collections::hash_map::DefaultHasher;
-use std::error;
+use libp2p::PeerId;
+use libp2p::Swarm;
+use prost::Message;
 use std::fs;
-use std::fs::File;
-use std::task::{Context, Poll};
-use std::{error::Error, io::Write, path::PathBuf};
+use std::{
+    fs::File,
+    io::{Result, Write},
+    path::PathBuf,
+    task::{Context, Poll},
+};
 use tokio::sync::mpsc;
-
-
 
 pub fn run(
     config: Config,
@@ -37,11 +32,9 @@ pub fn run(
     local_address: Option<String>,
     peers: Option<Vec<String>>,
     topics: Option<Vec<String>>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let base_dir: PathBuf = config.gossip_home_dir();
     let bookkeeper: Bookkeeper = read_or_generate_bookkeeper_key(&base_dir)?;
-
-    println!("Bookkeper key {:?}", bookkeeper);
 
     let network_config = NetworkConfig::read_or_generate(
         &base_dir,
@@ -54,9 +47,9 @@ pub fn run(
     let (tx, mut rx): (mpsc::Sender<Intent>, mpsc::Receiver<Intent>) =
         mpsc::channel(100);
 
-    if rpc {
-        let _res = rpc::rpc_server(tx);
-    }
+    // if rpc {
+    //     let _res = rpc::rpc_server(tx);
+    // }
 
     // Read full lines from stdin
     let mut stdin = io::BufReader::new(io::stdin()).lines();
@@ -66,7 +59,9 @@ pub fn run(
         loop {
             if let Err(e) = match stdin.try_poll_next_unpin(cx)? {
                 Poll::Ready(Some(line)) => {
-                    let tix = Intent { asset: line.clone() };
+                    let tix = Intent {
+                        asset: line.clone(),
+                    };
                     let mut tix_bytes = vec![];
                     tix.encode(&mut tix_bytes).unwrap();
                     println!("Sending {:?}", line);
@@ -74,7 +69,10 @@ pub fn run(
                         .gossipsub
                         .publish(Topic::new(orderbook::TOPIC), tix_bytes)
                 }
-                Poll::Ready(None) => panic!("Stdin closed"),
+                Poll::Ready(None) => {
+                    println!("panicking stding");
+                    panic!("Stdin closed")
+                },
                 Poll::Pending => break,
             } {
                 println!("Publish error: {:?}", e);
@@ -104,11 +102,12 @@ pub fn run(
                 Poll::Ready(Some(event)) => {
                     println!("received though channel {:?}", event)
                 }
-                Poll::Ready(None) => panic!("Channel closed"),
-
-                Poll::Pending => {
-                    break;
+                Poll::Ready(None) => {
+                    println!("panicking channel");
+                    panic!("Channel closed")
                 }
+
+                Poll::Pending => break,
             }
         }
 
@@ -119,8 +118,7 @@ pub fn run(
 fn prepare_swarm(
     bookkeeper: Bookkeeper,
     network_config: NetworkConfig,
-) -> std::io::Result<Swarm<Behaviour>> {
-    // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
+) -> Result<Swarm<Behaviour>> {
     let keypair = Ed25519(bookkeeper.key);
     let local_peer_id = PeerId::from(keypair.public());
 
@@ -130,8 +128,8 @@ fn prepare_swarm(
         Behaviour::new(keypair, network_config.gossip.topics);
 
     // Create a Swarm to manage peers and events
-    let mut swarm =
-        libp2p::Swarm::new(transport, network_behaviour, local_peer_id);
+    let mut swarm = Swarm::new(transport, network_behaviour, local_peer_id);
+
 
     for to_dial in &network_config.peers {
         let dialing = to_dial.clone();
