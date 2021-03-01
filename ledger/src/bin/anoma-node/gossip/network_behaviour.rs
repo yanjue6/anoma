@@ -1,20 +1,18 @@
 use super::dkg;
 use super::orderbook;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::time::Duration;
 
 use libp2p::gossipsub::{
-    Gossipsub, GossipsubConfig, GossipsubEvent, GossipsubMessage,
-    IdentTopic as Topic, MessageAuthenticity, MessageId, TopicHash,
-    ValidationMode,
+    Gossipsub, GossipsubConfig, GossipsubConfigBuilder, GossipsubEvent,
+    GossipsubMessage, IdentTopic as Topic, MessageAuthenticity, MessageId,
+    TopicHash, ValidationMode,
 };
 
 use libp2p::{
-    gossipsub::{self},
-    identity::Keypair,
-    swarm::NetworkBehaviourEventProcess,
-    NetworkBehaviour,
+    identity::Keypair, swarm::NetworkBehaviourEventProcess, NetworkBehaviour,
 };
-use sha2::{Digest, Sha256};
 
 #[derive(NetworkBehaviour)]
 pub struct Behaviour {
@@ -25,11 +23,9 @@ impl Behaviour {
     pub fn new(key: Keypair, topics: Vec<String>) -> Self {
         let gossip_config = Behaviour::gossipsub_config();
 
-        let mut gossipsub: gossipsub::Gossipsub = gossipsub::Gossipsub::new(
-            MessageAuthenticity::Signed(key),
-            gossip_config,
-        )
-        .expect("Correct configuration");
+        let mut gossipsub: Gossipsub =
+            Gossipsub::new(MessageAuthenticity::Signed(key), gossip_config)
+                .expect("Correct configuration");
 
         for topic_str in topics {
             let topic = Topic::new(topic_str);
@@ -39,19 +35,18 @@ impl Behaviour {
     }
 
     fn gossipsub_config() -> GossipsubConfig {
-        gossipsub::GossipsubConfigBuilder::default()
+        GossipsubConfigBuilder::default()
             .heartbeat_interval(Duration::from_secs(10))
             .validation_mode(ValidationMode::Strict)
-            .message_id_fn(Behaviour::gossipsub_message_id)
+            .message_id_fn(Self::gossipsub_message_id)
             .build()
             .expect("Valid config")
     }
 
     fn gossipsub_message_id(message: &GossipsubMessage) -> MessageId {
-        let mut hasher = Sha256::new();
-        hasher.update(message.data.as_slice());
-        let address = format!("{:.40X}", hasher.finalize());
-        MessageId::from(address.into_bytes())
+        let mut s = DefaultHasher::new();
+        message.data.hash(&mut s);
+        MessageId::from(s.finish().to_string())
     }
 }
 
@@ -75,11 +70,11 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Behaviour {
                 );
                 if TopicHash::from(Topic::new(orderbook::TOPIC)) == topic_hash {
                     let tx = orderbook::apply(data);
-                    println!("message: {:?}", tx);
+                    println!("Got Orderbook message: {:?}", tx);
                 } else if TopicHash::from(Topic::new(dkg::TOPIC)) == topic_hash
                 {
                     let tx = dkg::apply(data);
-                    println!("Got message: {:?}", tx);
+                    println!("Got DKG message: {:?}", tx);
                 } else {
                 };
             }
