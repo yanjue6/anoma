@@ -4,10 +4,6 @@ use anoma::protobuf::service::gossip_service_server::{
 use anoma::protobuf::service::{Response};
 use anoma::protobuf::gossip::{Dkg, Intent};
 
-use std::collections::VecDeque;
-use std::ops::Deref;
-use std::sync::Arc;
-use std::sync::Mutex;
 use tokio::sync::mpsc;
 use tonic::transport::Server;
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
