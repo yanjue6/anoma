@@ -1,7 +1,8 @@
-use anoma::protobuf::gossip::gossip_service_server::{
+use anoma::protobuf::service::gossip_service_server::{
     GossipService, GossipServiceServer,
 };
-use anoma::protobuf::gossip::{Dkg, Intent, Response};
+use anoma::protobuf::service::{Response};
+use anoma::protobuf::gossip::{Dkg, Intent};
 
 use std::collections::VecDeque;
 use std::ops::Deref;

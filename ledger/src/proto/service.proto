@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package service;
+
+import "gossip.proto";
+
+service GossipService {
+  rpc SendIntent (gossip.Intent) returns (Response);
+  rpc SendDkg (gossip.Dkg) returns (Response);
+}
+
+message Response {
+  string result = 1;
+}
