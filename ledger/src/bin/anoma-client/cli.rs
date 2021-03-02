@@ -1,7 +1,7 @@
 //! The docstrings on types and their fields with `derive(Clap)` are displayed
 //! in the CLI `--help`.
-use anoma::protobuf::service::gossip_service_client::GossipServiceClient;
 use anoma::protobuf::gossip::Intent;
+use anoma::protobuf::service::gossip_service_client::GossipServiceClient;
 
 use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
 use anoma::types::{Message, Transaction};

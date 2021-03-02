@@ -1,8 +1,8 @@
+use anoma::protobuf::gossip::{Dkg, Intent};
 use anoma::protobuf::service::gossip_service_server::{
     GossipService, GossipServiceServer,
 };
-use anoma::protobuf::service::{Response};
-use anoma::protobuf::gossip::{Dkg, Intent};
+use anoma::protobuf::service::Response;
 
 use tokio::sync::mpsc;
 use tonic::transport::Server;

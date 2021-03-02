@@ -3,38 +3,36 @@ mod dkg;
 mod network_behaviour;
 mod orderbook;
 
-use crate::gossip::network_behaviour::Behaviour;
-use crate::rpc;
-
-use anoma::protobuf::gossip::Intent;
-use anoma::{bookkeeper::Bookkeeper, config::*};
+use self::config::NetworkConfig;
+use self::network_behaviour::Behaviour;
+use anoma::{bookkeeper::Bookkeeper, config::*, protobuf::gossip::Intent};
 use async_std::{io, task};
-use config::NetworkConfig;
-use futures::{future, prelude::*};
-use libp2p;
+use futures::prelude::*;
 use libp2p::gossipsub::IdentTopic as Topic;
-use libp2p::identity::Keypair::Ed25519;
 use libp2p::PeerId;
-use libp2p::Swarm;
-use prost::Message;
+use libp2p::{identity::Keypair, identity::Keypair::Ed25519, Swarm};
 use std::fs;
+use std::fs::File;
 use std::{
-    fs::File,
-    io::{Result, Write},
-    path::PathBuf,
+    error::Error,
     task::{Context, Poll},
 };
-use tokio::sync::mpsc;
+use std::{io::Write, path::PathBuf};
+use prost::Message;
 
+#[warn(unused_variables)]
 pub fn run(
     config: Config,
     rpc: bool,
     local_address: Option<String>,
     peers: Option<Vec<String>>,
     topics: Option<Vec<String>>,
-) -> Result<()> {
+) -> Result<(), Box<dyn Error>> {
     let base_dir: PathBuf = config.gossip_home_dir();
     let bookkeeper: Bookkeeper = read_or_generate_bookkeeper_key(&base_dir)?;
+
+    // Create a Gossipsub topic
+    let topic = Topic::new(String::from(orderbook::TOPIC));
 
     let network_config = NetworkConfig::read_or_generate(
         &base_dir,
@@ -43,17 +41,13 @@ pub fn run(
         topics,
     );
 
-    let mut swarm = prepare_swarm(bookkeeper, network_config)?;
-    let (tx, mut rx): (mpsc::Sender<Intent>, mpsc::Receiver<Intent>) =
-        mpsc::channel(100);
-
-    // if rpc {
-    //     let _res = rpc::rpc_server(tx);
-    // }
+    let mut swarm = build_swarm(bookkeeper)?;
+    prepare_swarm(&mut swarm, &network_config);
 
     // Read full lines from stdin
     let mut stdin = io::BufReader::new(io::stdin()).lines();
 
+    // Kick it off
     let mut listening = false;
     task::block_on(future::poll_fn(move |cx: &mut Context<'_>| {
         loop {
@@ -64,101 +58,85 @@ pub fn run(
                     };
                     let mut tix_bytes = vec![];
                     tix.encode(&mut tix_bytes).unwrap();
-                    println!("Sending {:?}", line);
-                    swarm
-                        .gossipsub
-                        .publish(Topic::new(orderbook::TOPIC), tix_bytes)
+                    swarm.gossipsub.publish(topic.clone(), tix_bytes)
                 }
                 Poll::Ready(None) => {
                     println!("panicking stding");
                     panic!("Stdin closed")
-                },
+                }
                 Poll::Pending => break,
             } {
                 println!("Publish error: {:?}", e);
             }
         }
+
         loop {
             match swarm.poll_next_unpin(cx) {
-                Poll::Ready(Some(event)) => {
-                    println!("received gossiped {:?}", event)
-                }
-                Poll::Ready(None) => {
-                    return Poll::Ready(Ok(()));
-                }
-                Poll::Pending => {
-                    if !listening {
-                        for addr in Swarm::listeners(&swarm) {
-                            println!("Listening in {}", addr);
-                            listening = true;
-                        }
-                    }
-                    break;
-                }
+                Poll::Ready(Some(event)) => println!("EVENT {:?}", event),
+                Poll::Ready(None) => return Poll::Ready(Ok(())),
+                Poll::Pending => break,
             }
         }
-        loop {
-            match rx.poll_recv(cx) {
-                Poll::Ready(Some(event)) => {
-                    println!("received though channel {:?}", event)
-                }
-                Poll::Ready(None) => {
-                    println!("panicking channel");
-                    panic!("Channel closed")
-                }
 
-                Poll::Pending => break,
+        if !listening {
+            for addr in Swarm::listeners(&swarm) {
+                println!("Listening on {:?}", addr);
+                listening = true;
             }
         }
 
         Poll::Pending
     }))
 }
-
-fn prepare_swarm(
+fn build_swarm(
     bookkeeper: Bookkeeper,
-    network_config: NetworkConfig,
-) -> Result<Swarm<Behaviour>> {
-    let keypair = Ed25519(bookkeeper.key);
-    let local_peer_id = PeerId::from(keypair.public());
+) -> Result<Swarm<Behaviour>, Box<dyn Error>> {
+    // Create a random PeerId
+    let local_key: Keypair = Ed25519(bookkeeper.key);
+    let local_peer_id: PeerId = PeerId::from(local_key.public());
 
-    let transport = libp2p::build_development_transport(keypair.clone())?;
+    println!("Local peer id: {:?}", local_peer_id);
 
-    let network_behaviour =
-        Behaviour::new(keypair, network_config.gossip.topics);
+    // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
+    let transport = libp2p::build_development_transport(local_key.clone())?;
 
-    // Create a Swarm to manage peers and events
-    let mut swarm = Swarm::new(transport, network_behaviour, local_peer_id);
+    let gossipsub: Behaviour = Behaviour::new(local_key);
 
+    // build the swarm
+    Ok(Swarm::new(transport, gossipsub, local_peer_id))
+}
 
+fn prepare_swarm(swarm: &mut Swarm<Behaviour>, network_config: &NetworkConfig) {
+    for topic_string in &network_config.gossip.topics {
+        let topic = Topic::new(topic_string);
+        swarm.gossipsub.subscribe(&topic).unwrap();
+    }
+
+    // Listen on all interfaces and whatever port the OS assigns
+    Swarm::listen_on(swarm, network_config.local_address.parse().unwrap())
+        .unwrap();
+
+    // Reach out to another node if specified
     for to_dial in &network_config.peers {
         let dialing = to_dial.clone();
         match to_dial.parse() {
-            Ok(to_dial) => {
-                match libp2p::Swarm::dial_addr(&mut swarm, to_dial) {
-                    Ok(_) => println!("Dialed {:?}", dialing),
-                    Err(e) => {
-                        println!("Dial {:?} failed: {:?}", dialing, e)
-                    }
+            Ok(to_dial) => match Swarm::dial_addr(swarm, to_dial) {
+                Ok(_) => println!("Dialed {:?}", dialing),
+                Err(e) => {
+                    println!("Dial {:?} failed: {:?}", dialing, e)
                 }
-            }
+            },
             Err(err) => {
                 println!("Failed to parse address to dial: {:?}", err)
             }
         }
     }
-
-    libp2p::Swarm::listen_on(
-        &mut swarm,
-        network_config.local_address.parse().unwrap(),
-    )
-    .unwrap();
-    Ok(swarm)
 }
-
 const BOOKKEEPER_KEY_FILE: &str = "priv_bookkepeer_key.json";
 
-fn read_or_generate_bookkeeper_key(home_dir: &PathBuf) -> Result<Bookkeeper> {
+fn read_or_generate_bookkeeper_key(
+    home_dir: &PathBuf,
+) -> Result<Bookkeeper, std::io::Error> {
     if home_dir.join("config").join(BOOKKEEPER_KEY_FILE).exists() {
         println!(
             "Reading key {:?}",
