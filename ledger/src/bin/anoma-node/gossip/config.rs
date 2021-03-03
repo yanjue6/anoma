@@ -58,15 +58,14 @@ impl NetworkConfig {
         peers: Option<Vec<String>>,
         topics: Option<Vec<String>>,
     ) -> Self {
-        let config = Self {
+        Self {
             local_address: local_address
                 .unwrap_or(String::from("/ip4/127.0.0.1/tcp/38153")),
-            peers: peers.unwrap_or(vec![]),
+            peers: peers.unwrap_or_default(),
             gossip: GossipConfig {
-                topics: topics.unwrap_or(vec![]),
+                topics: topics.unwrap_or_default(),
             },
-        };
-        config
+        }
     }
 
     fn write_config(&self, home_dir: &PathBuf) -> Result<()> {
