@@ -3,6 +3,8 @@
 
 mod db;
 mod types;
+mod ddb;
+mod sstorage;
 
 pub use self::types::{
     Address, Balance, BasicAddress, BlockHash, BlockHeight, MerkleTree,
