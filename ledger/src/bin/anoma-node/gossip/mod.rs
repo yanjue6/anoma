@@ -2,15 +2,15 @@ mod config;
 mod dkg;
 mod network_behaviour;
 mod orderbook;
+mod p2p;
 
 use self::config::NetworkConfig;
-use self::network_behaviour::Behaviour;
 use anoma::{bookkeeper::Bookkeeper, config::*, protobuf::gossip::Intent};
 use async_std::{io, task};
 use futures::prelude::*;
 use libp2p::gossipsub::IdentTopic as Topic;
-use libp2p::PeerId;
 use libp2p::{identity::Keypair, identity::Keypair::Ed25519, Swarm};
+use prost::Message;
 use std::fs;
 use std::fs::File;
 use std::{
@@ -18,7 +18,6 @@ use std::{
     task::{Context, Poll},
 };
 use std::{io::Write, path::PathBuf};
-use prost::Message;
 
 #[warn(unused_variables)]
 pub fn run(
@@ -41,8 +40,8 @@ pub fn run(
         topics,
     );
 
-    let mut swarm = build_swarm(bookkeeper)?;
-    prepare_swarm(&mut swarm, &network_config);
+    let mut swarm = p2p::build_swarm(bookkeeper)?;
+    p2p::prepare_swarm(&mut swarm, &network_config);
 
     // Read full lines from stdin
     let mut stdin = io::BufReader::new(io::stdin()).lines();
@@ -88,50 +87,7 @@ pub fn run(
         Poll::Pending
     }))
 }
-fn build_swarm(
-    bookkeeper: Bookkeeper,
-) -> Result<Swarm<Behaviour>, Box<dyn Error>> {
-    // Create a random PeerId
-    let local_key: Keypair = Ed25519(bookkeeper.key);
-    let local_peer_id: PeerId = PeerId::from(local_key.public());
 
-    println!("Local peer id: {:?}", local_peer_id);
-
-    // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
-    let transport = libp2p::build_development_transport(local_key.clone())?;
-
-    let gossipsub: Behaviour = Behaviour::new(local_key);
-
-    // build the swarm
-    Ok(Swarm::new(transport, gossipsub, local_peer_id))
-}
-
-fn prepare_swarm(swarm: &mut Swarm<Behaviour>, network_config: &NetworkConfig) {
-    for topic_string in &network_config.gossip.topics {
-        let topic = Topic::new(topic_string);
-        swarm.gossipsub.subscribe(&topic).unwrap();
-    }
-
-    // Listen on all interfaces and whatever port the OS assigns
-    Swarm::listen_on(swarm, network_config.local_address.parse().unwrap())
-        .unwrap();
-
-    // Reach out to another node if specified
-    for to_dial in &network_config.peers {
-        let dialing = to_dial.clone();
-        match to_dial.parse() {
-            Ok(to_dial) => match Swarm::dial_addr(swarm, to_dial) {
-                Ok(_) => println!("Dialed {:?}", dialing),
-                Err(e) => {
-                    println!("Dial {:?} failed: {:?}", dialing, e)
-                }
-            },
-            Err(err) => {
-                println!("Failed to parse address to dial: {:?}", err)
-            }
-        }
-    }
-}
 const BOOKKEEPER_KEY_FILE: &str = "priv_bookkepeer_key.json";
 
 fn read_or_generate_bookkeeper_key(
