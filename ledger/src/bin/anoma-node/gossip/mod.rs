@@ -1,5 +1,6 @@
 mod config;
 mod dkg;
+mod mempool;
 mod network_behaviour;
 mod orderbook;
 mod p2p;

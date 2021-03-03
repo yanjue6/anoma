@@ -1,5 +1,6 @@
 use super::dkg;
 use super::orderbook;
+use super::orderbook::Orderbook;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
@@ -16,6 +17,9 @@ use libp2p::{
 #[derive(NetworkBehaviour)]
 pub struct Behaviour {
     pub gossipsub: Gossipsub,
+    #[behaviour(ignore)]
+    // XXX TODO instead add a channel and spawn message on it
+    orderbook: Orderbook,
 }
 
 impl Behaviour {
@@ -38,7 +42,10 @@ impl Behaviour {
         let gossipsub: Gossipsub =
             Gossipsub::new(MessageAuthenticity::Signed(key), gossipsub_config)
                 .expect("Correct configuration");
-        Self { gossipsub }
+        Self {
+            gossipsub,
+            orderbook: Orderbook::new(),
+        }
     }
 }
 
@@ -61,8 +68,7 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Behaviour {
                 message_id, propagation_source,
             );
             if TopicHash::from(Topic::new(orderbook::TOPIC)) == topic_hash {
-                let tx = orderbook::apply(data);
-                println!("Got Orderbook message: {:?}", tx);
+                self.orderbook.apply(data).unwrap();
             } else if TopicHash::from(Topic::new(dkg::TOPIC)) == topic_hash {
                 let tx = dkg::apply(data);
                 println!("Got DKG message: {:?}", tx);
