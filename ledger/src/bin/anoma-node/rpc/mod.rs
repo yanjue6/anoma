@@ -4,7 +4,7 @@ use anoma::protobuf::service::gossip_service_server::{
 };
 use anoma::protobuf::service::Response;
 
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::{self, Sender};
 use tonic::transport::Server;
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
 
@@ -38,7 +38,7 @@ impl GossipService for RpcService {
 
 #[tokio::main]
 pub async fn rpc_server(
-    tx: mpsc::Sender<Intent>,
+    tx: Sender<Intent>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:39111".parse().unwrap();
 

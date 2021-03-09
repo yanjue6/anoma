@@ -1,6 +1,6 @@
 use libp2p::gossipsub::{
-    self, Gossipsub, GossipsubEvent, GossipsubMessage, IdentTopic as Topic,
-    MessageAuthenticity, MessageId, TopicHash, ValidationMode,
+    self, Gossipsub, GossipsubEvent, GossipsubMessage, MessageAuthenticity,
+    MessageId, TopicHash, ValidationMode,
 };
 use libp2p::PeerId;
 use libp2p::{

@@ -7,16 +7,17 @@ mod p2p;
 
 use self::config::NetworkConfig;
 use self::orderbook::Orderbook;
-use anoma::{bookkeeper::Bookkeeper, config::*};
+use anoma::{bookkeeper::Bookkeeper, config::*, protobuf::gossip::Intent};
 use std::error::Error;
 use std::fs;
 use std::fs::File;
 use std::{io::Write, path::PathBuf};
+use tokio::sync::mpsc::Receiver;
 
 #[warn(unused_variables)]
 pub fn run(
     config: Config,
-    rpc: bool,
+    rpc_event_receiver: Option<Receiver<Intent>>,
     local_address: Option<String>,
     peers: Option<Vec<String>>,
     topics: Option<Vec<String>>,
@@ -34,7 +35,13 @@ pub fn run(
 
     let (mut swarm, event_receiver) = p2p::build_swarm(bookkeeper)?;
     p2p::prepare_swarm(&mut swarm, &network_config);
-    p2p::dispatcher(swarm, event_receiver, Orderbook::new(), None)
+    p2p::dispatcher(
+        swarm,
+        event_receiver,
+        rpc_event_receiver,
+        Some(Orderbook::new()),
+        None,
+    )
 }
 
 const BOOKKEEPER_KEY_FILE: &str = "priv_bookkepeer_key.json";

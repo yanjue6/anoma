@@ -33,7 +33,6 @@ dev = []
 std = ["ed25519-dalek/std", "rand/std", "rand_core/std"]
 
 [dependencies]
-async-std = "1.9.0"
 base64 = "0.13.0"
 blake2b-rs = "0.2.0"
 borsh = "0.8.1"
