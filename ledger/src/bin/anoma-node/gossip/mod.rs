@@ -6,18 +6,11 @@ mod orderbook;
 mod p2p;
 
 use self::config::NetworkConfig;
-use anoma::{bookkeeper::Bookkeeper, config::*, protobuf::gossip::Intent};
-use async_std::{io, task};
-use futures::prelude::*;
-use libp2p::gossipsub::IdentTopic as Topic;
-use libp2p::{identity::Keypair, identity::Keypair::Ed25519, Swarm};
-use prost::Message;
+use self::orderbook::Orderbook;
+use anoma::{bookkeeper::Bookkeeper, config::*};
+use std::error::Error;
 use std::fs;
 use std::fs::File;
-use std::{
-    error::Error,
-    task::{Context, Poll},
-};
 use std::{io::Write, path::PathBuf};
 
 #[warn(unused_variables)]
@@ -32,8 +25,6 @@ pub fn run(
     let bookkeeper: Bookkeeper = read_or_generate_bookkeeper_key(&base_dir)?;
 
     // Create a Gossipsub topic
-    let topic = Topic::new(String::from(orderbook::TOPIC));
-
     let network_config = NetworkConfig::read_or_generate(
         &base_dir,
         local_address,
@@ -41,52 +32,9 @@ pub fn run(
         topics,
     );
 
-    let mut swarm = p2p::build_swarm(bookkeeper)?;
+    let (mut swarm, event_receiver) = p2p::build_swarm(bookkeeper)?;
     p2p::prepare_swarm(&mut swarm, &network_config);
-
-    // Read full lines from stdin
-    let mut stdin = io::BufReader::new(io::stdin()).lines();
-
-    // Kick it off
-    let mut listening = false;
-    task::block_on(future::poll_fn(move |cx: &mut Context<'_>| {
-        loop {
-            if let Err(e) = match stdin.try_poll_next_unpin(cx)? {
-                Poll::Ready(Some(line)) => {
-                    let tix = Intent {
-                        asset: line.clone(),
-                    };
-                    let mut tix_bytes = vec![];
-                    tix.encode(&mut tix_bytes).unwrap();
-                    swarm.gossipsub.publish(topic.clone(), tix_bytes)
-                }
-                Poll::Ready(None) => {
-                    println!("panicking stding");
-                    panic!("Stdin closed")
-                }
-                Poll::Pending => break,
-            } {
-                println!("Publish error: {:?}", e);
-            }
-        }
-
-        loop {
-            match swarm.poll_next_unpin(cx) {
-                Poll::Ready(Some(event)) => println!("EVENT {:?}", event),
-                Poll::Ready(None) => return Poll::Ready(Ok(())),
-                Poll::Pending => break,
-            }
-        }
-
-        if !listening {
-            for addr in Swarm::listeners(&swarm) {
-                println!("Listening on {:?}", addr);
-                listening = true;
-            }
-        }
-
-        Poll::Pending
-    }))
+    p2p::dispatcher(swarm, event_receiver, Orderbook::new(), None)
 }
 
 const BOOKKEEPER_KEY_FILE: &str = "priv_bookkepeer_key.json";
