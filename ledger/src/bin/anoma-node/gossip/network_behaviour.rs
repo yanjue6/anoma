@@ -11,7 +11,8 @@ use std::hash::{Hash, Hasher};
 use std::time::Duration;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-/// A behaviour event
+/// A behaviour event#
+#[derive(Debug)]
 pub enum BehaviourEvent {
     /// A new message received from a peer
     Message(Option<PeerId>, TopicHash, MessageId, Vec<u8>),
