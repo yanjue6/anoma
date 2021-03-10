@@ -1,7 +1,7 @@
 //! The docstrings on types and their fields with `derive(Clap)` are displayed
 //! in the CLI `--help`.
-use anoma::protobuf::gossip::Intent;
-use anoma::protobuf::service::gossip_service_client::GossipServiceClient;
+use anoma::protobuf::services::rpc_service_client::RpcServiceClient;
+use anoma::protobuf::types;
 
 use anoma::cli::{ClientOpts, Gossip, InlinedClientOpts, Transfer};
 use anoma::types::{Message, Transaction};
@@ -39,7 +39,12 @@ async fn gossip(
     _orderbook_addr: String,
     msg: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = GossipServiceClient::connect("http://[::1]:39111").await?;
-    let _response = client.send_intent(Intent { asset: msg }).await?;
+    let mut client = RpcServiceClient::connect("http://[::1]:39111").await?;
+    let intent = Some(types::Intent { data: msg });
+    let intent_message = types::IntentMessage { intent };
+    let message = types::Message {
+        message: Some(types::message::Message::IntentMessage(intent_message)),
+    };
+    let _response = client.send_message(message).await?;
     Ok(())
 }

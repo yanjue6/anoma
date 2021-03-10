@@ -4,7 +4,7 @@
 use anoma::{
     cli::{InlinedNodeOpts, NodeOpts},
     config::Config,
-    protobuf::gossip::Intent,
+    protobuf::types::IntentMessage,
 };
 use clap::Clap;
 use std::thread;
@@ -29,7 +29,7 @@ pub fn main(config: Config) {
 
 fn exec_inlined(
     config: Config,
-    rpc_event_receiver: Option<Receiver<Intent>>,
+    rpc_event_receiver: Option<Receiver<IntentMessage>>,
     ops: InlinedNodeOpts,
 ) {
     let _exec = match ops {

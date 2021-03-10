@@ -1,50 +1,53 @@
-use anoma::protobuf::gossip::{Dkg, Intent};
-use anoma::protobuf::service::gossip_service_server::{
-    GossipService, GossipServiceServer,
+use anoma::protobuf::services::RpcResponse;
+use anoma::protobuf::types::{DkgMessage, Intent};
+use anoma::protobuf::{
+    services::rpc_service_server::{RpcService, RpcServiceServer},
+    types::{self, IntentMessage},
 };
-use anoma::protobuf::service::Response;
 
 use tokio::sync::mpsc::{self, Sender};
 use tonic::transport::Server;
 use tonic::{Request as TonicRequest, Response as TonicResponse, Status};
 
 #[derive(Debug)]
-struct RpcService {
-    tx: mpsc::Sender<Intent>,
+struct Rpc {
+    tx: mpsc::Sender<IntentMessage>,
 }
 
 #[tonic::async_trait]
-impl GossipService for RpcService {
-    async fn send_intent(
+impl RpcService for Rpc {
+    async fn send_message(
         &self,
-        request: TonicRequest<Intent>,
-    ) -> Result<TonicResponse<Response>, Status> {
-        let intent = request.get_ref();
-
-        println!("received a intent {:?}", intent);
-
-        self.tx.send(intent.clone()).await.unwrap();
-        Ok(TonicResponse::new(Response::default()))
-    }
-    async fn send_dkg(
-        &self,
-        request: TonicRequest<Dkg>,
-    ) -> Result<TonicResponse<Response>, Status> {
-        let Dkg { msg } = request.get_ref();
-        println!("received a intent {}", msg);
-        Ok(TonicResponse::new(Response::default()))
+        request: TonicRequest<types::Message>,
+    ) -> Result<TonicResponse<RpcResponse>, Status> {
+        let types::Message {
+            message: intent_message,
+        }: &types::Message = request.get_ref();
+        match intent_message {
+            Some(types::message::Message::IntentMessage(msg)) => {
+                println!("received a intent {:?}", msg);
+                self.tx.send(msg.clone()).await.unwrap();
+            }
+            Some(types::message::Message::DkgMsg(msg)) => {
+                println!("received dkg msg {:?}, nothing implemented yet", msg);
+            }
+            None => {
+                println!("empty rpc message received");
+            }
+        }
+        Ok(TonicResponse::new(RpcResponse::default()))
     }
 }
 
 #[tokio::main]
 pub async fn rpc_server(
-    tx: Sender<Intent>,
+    tx: Sender<IntentMessage>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:39111".parse().unwrap();
 
-    let rpc = RpcService { tx };
+    let rpc = Rpc { tx };
 
-    let svc = GossipServiceServer::new(rpc);
+    let svc = RpcServiceServer::new(rpc);
 
     Server::builder().add_service(svc).serve(addr).await?;
 

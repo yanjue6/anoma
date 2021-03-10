@@ -4,11 +4,16 @@ mod mempool;
 mod network_behaviour;
 mod orderbook;
 mod p2p;
+mod types;
 
-use self::config::NetworkConfig;
 use self::orderbook::Orderbook;
+use self::{config::NetworkConfig, dkg::DKG};
 // use self::Dkg::DKG;
-use anoma::{bookkeeper::Bookkeeper, config::*, protobuf::gossip::Intent};
+use anoma::{
+    bookkeeper::Bookkeeper,
+    config::*,
+    protobuf::types::{Intent, IntentMessage},
+};
 use std::error::Error;
 use std::fs;
 use std::fs::File;
@@ -18,7 +23,7 @@ use tokio::sync::mpsc::Receiver;
 #[warn(unused_variables)]
 pub fn run(
     config: Config,
-    rpc_event_receiver: Option<Receiver<Intent>>,
+    rpc_event_receiver: Option<Receiver<IntentMessage>>,
     local_address: Option<String>,
     peers: Option<Vec<String>>,
     topics: Option<Vec<String>>,
@@ -41,7 +46,7 @@ pub fn run(
         event_receiver,
         rpc_event_receiver,
         Some(Orderbook::new()),
-        None,
+        Some(DKG::new()),
     )
 }
 

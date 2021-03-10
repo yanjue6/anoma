@@ -1,7 +1,5 @@
-use anoma::protobuf::gossip::Dkg;
+use anoma::protobuf::types::DkgMessage;
 use prost::Message;
-
-pub const TOPIC: &str = "dkg";
 
 pub struct DKG {}
 
@@ -14,7 +12,7 @@ impl DKG {
         &mut self,
         data: Vec<u8>,
     ) -> Result<bool, prost::DecodeError> {
-        let _dkg_msg = Dkg::decode(&data[..])?;
+        let _dkg_msg = DkgMessage::decode(&data[..])?;
         Ok(true)
     }
 }

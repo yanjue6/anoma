@@ -1,16 +1,16 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct Response {
+pub struct RpcResponse {
     #[prost(string, tag = "1")]
     pub result: ::prost::alloc::string::String,
 }
 #[doc = r" Generated client implementations."]
-pub mod gossip_service_client {
+pub mod rpc_service_client {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    pub struct GossipServiceClient<T> {
+    pub struct RpcServiceClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl GossipServiceClient<tonic::transport::Channel> {
+    impl RpcServiceClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -21,7 +21,7 @@ pub mod gossip_service_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> GossipServiceClient<T>
+    impl<T> RpcServiceClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + HttpBody + Send + 'static,
@@ -40,10 +40,11 @@ pub mod gossip_service_client {
                 tonic::client::Grpc::with_interceptor(inner, interceptor);
             Self { inner }
         }
-        pub async fn send_intent(
+        pub async fn send_message(
             &mut self,
-            request: impl tonic::IntoRequest<super::super::gossip::Intent>,
-        ) -> Result<tonic::Response<super::Response>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::super::types::Message>,
+        ) -> Result<tonic::Response<super::RpcResponse>, tonic::Status>
+        {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -52,62 +53,42 @@ pub mod gossip_service_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/service.GossipService/SendIntent",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        pub async fn send_dkg(
-            &mut self,
-            request: impl tonic::IntoRequest<super::super::gossip::Dkg>,
-        ) -> Result<tonic::Response<super::Response>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/service.GossipService/SendDkg",
+                "/services.RPCService/SendMessage",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
-    impl<T: Clone> Clone for GossipServiceClient<T> {
+    impl<T: Clone> Clone for RpcServiceClient<T> {
         fn clone(&self) -> Self {
             Self {
                 inner: self.inner.clone(),
             }
         }
     }
-    impl<T> std::fmt::Debug for GossipServiceClient<T> {
+    impl<T> std::fmt::Debug for RpcServiceClient<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "GossipServiceClient {{ ... }}")
+            write!(f, "RpcServiceClient {{ ... }}")
         }
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod gossip_service_server {
+pub mod rpc_service_server {
     #![allow(unused_variables, dead_code, missing_docs)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with GossipServiceServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with RpcServiceServer."]
     #[async_trait]
-    pub trait GossipService: Send + Sync + 'static {
-        async fn send_intent(
+    pub trait RpcService: Send + Sync + 'static {
+        async fn send_message(
             &self,
-            request: tonic::Request<super::super::gossip::Intent>,
-        ) -> Result<tonic::Response<super::Response>, tonic::Status>;
-        async fn send_dkg(
-            &self,
-            request: tonic::Request<super::super::gossip::Dkg>,
-        ) -> Result<tonic::Response<super::Response>, tonic::Status>;
+            request: tonic::Request<super::super::types::Message>,
+        ) -> Result<tonic::Response<super::RpcResponse>, tonic::Status>;
     }
     #[derive(Debug)]
-    pub struct GossipServiceServer<T: GossipService> {
+    pub struct RpcServiceServer<T: RpcService> {
         inner: _Inner<T>,
     }
     struct _Inner<T>(Arc<T>, Option<tonic::Interceptor>);
-    impl<T: GossipService> GossipServiceServer<T> {
+    impl<T: RpcService> RpcServiceServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner, None);
@@ -122,9 +103,9 @@ pub mod gossip_service_server {
             Self { inner }
         }
     }
-    impl<T, B> Service<http::Request<B>> for GossipServiceServer<T>
+    impl<T, B> Service<http::Request<B>> for RpcServiceServer<T>
     where
-        T: GossipService,
+        T: RpcService,
         B: HttpBody + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -140,15 +121,15 @@ pub mod gossip_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/service.GossipService/SendIntent" => {
+                "/services.RPCService/SendMessage" => {
                     #[allow(non_camel_case_types)]
-                    struct SendIntentSvc<T: GossipService>(pub Arc<T>);
-                    impl<T: GossipService>
+                    struct SendMessageSvc<T: RpcService>(pub Arc<T>);
+                    impl<T: RpcService>
                         tonic::server::UnaryService<
-                            super::super::gossip::Intent,
-                        > for SendIntentSvc<T>
+                            super::super::types::Message,
+                        > for SendMessageSvc<T>
                     {
-                        type Response = super::Response;
+                        type Response = super::RpcResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -156,12 +137,12 @@ pub mod gossip_service_server {
                         fn call(
                             &mut self,
                             request: tonic::Request<
-                                super::super::gossip::Intent,
+                                super::super::types::Message,
                             >,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move {
-                                (*inner).send_intent(request).await
+                                (*inner).send_message(request).await
                             };
                             Box::pin(fut)
                         }
@@ -170,48 +151,7 @@ pub mod gossip_service_server {
                     let fut = async move {
                         let interceptor = inner.1.clone();
                         let inner = inner.0;
-                        let method = SendIntentSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = if let Some(interceptor) = interceptor {
-                            tonic::server::Grpc::with_interceptor(
-                                codec,
-                                interceptor,
-                            )
-                        } else {
-                            tonic::server::Grpc::new(codec)
-                        };
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/service.GossipService/SendDkg" => {
-                    #[allow(non_camel_case_types)]
-                    struct SendDkgSvc<T: GossipService>(pub Arc<T>);
-                    impl<T: GossipService>
-                        tonic::server::UnaryService<super::super::gossip::Dkg>
-                        for SendDkgSvc<T>
-                    {
-                        type Response = super::Response;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::super::gossip::Dkg>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut =
-                                async move { (*inner).send_dkg(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let interceptor = inner.1.clone();
-                        let inner = inner.0;
-                        let method = SendDkgSvc(inner);
+                        let method = SendMessageSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = if let Some(interceptor) = interceptor {
                             tonic::server::Grpc::with_interceptor(
@@ -237,13 +177,13 @@ pub mod gossip_service_server {
             }
         }
     }
-    impl<T: GossipService> Clone for GossipServiceServer<T> {
+    impl<T: RpcService> Clone for RpcServiceServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self { inner }
         }
     }
-    impl<T: GossipService> Clone for _Inner<T> {
+    impl<T: RpcService> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone(), self.1.clone())
         }
@@ -253,9 +193,7 @@ pub mod gossip_service_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: GossipService> tonic::transport::NamedService
-        for GossipServiceServer<T>
-    {
-        const NAME: &'static str = "service.GossipService";
+    impl<T: RpcService> tonic::transport::NamedService for RpcServiceServer<T> {
+        const NAME: &'static str = "services.RPCService";
     }
 }

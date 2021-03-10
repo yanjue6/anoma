@@ -2,26 +2,20 @@ use super::{
     config::NetworkConfig,
     orderbook::{self, Orderbook},
 };
-use super::{
-    dkg::DKG,
-    network_behaviour::{Behaviour, BehaviourEvent},
-};
-use anoma::bookkeeper::Bookkeeper;
-use anoma::protobuf::gossip::Intent;
+use super::{dkg::DKG, network_behaviour::Behaviour, types::NetworkEvent};
+use anoma::protobuf::types::Intent;
+use anoma::{bookkeeper::Bookkeeper, protobuf::types::IntentMessage};
 use libp2p::gossipsub::{IdentTopic as Topic, MessageAcceptance};
 use libp2p::PeerId;
 use libp2p::{identity::Keypair, identity::Keypair::Ed25519};
 use prost::Message;
 use std::error::Error;
-use tokio::{
-    io::{self, AsyncBufReadExt},
-    sync::mpsc::Receiver,
-};
+use tokio::sync::mpsc::Receiver;
 
 pub type Swarm = libp2p::Swarm<Behaviour>;
 pub fn build_swarm(
     bookkeeper: Bookkeeper,
-) -> Result<(Swarm, Receiver<BehaviourEvent>), Box<dyn Error>> {
+) -> Result<(Swarm, Receiver<NetworkEvent>), Box<dyn Error>> {
     // Create a random PeerId
     let local_key: Keypair = Ed25519(bookkeeper.key);
     let local_peer_id: PeerId = PeerId::from(local_key.public());
@@ -67,8 +61,8 @@ pub fn prepare_swarm(swarm: &mut Swarm, network_config: &NetworkConfig) {
 #[tokio::main]
 pub async fn dispatcher(
     mut swarm: Swarm,
-    mut network_event_receiver: Receiver<BehaviourEvent>,
-    rpc_event_receiver: Option<Receiver<Intent>>,
+    mut network_event_receiver: Receiver<NetworkEvent>,
+    rpc_event_receiver: Option<Receiver<IntentMessage>>,
     orderbook_node: Option<Orderbook>,
     dkg_node: Option<DKG>,
 ) -> Result<(), Box<dyn Error>> {
@@ -76,13 +70,13 @@ pub async fn dispatcher(
         panic!("Need at least one module to be active, orderbook or dkg")
     }
     let mut orderbook_node: Orderbook = orderbook_node.unwrap();
+    let mut dkg_node = dkg_node.unwrap();
     match rpc_event_receiver {
         Some(mut rpc_event_receiver) => {
             loop {
                 tokio::select! {
                     event = rpc_event_receiver.recv() =>
                     {handle_rpc_event(event,&mut swarm)}
-                    line = stdin.next_line() => {handle_stdin(line, &mut swarm)?}
                     swarm_event = swarm.next() => {
                         // All events are handled by the
                         // `NetworkBehaviourEventProcess`es.  I.e. the
@@ -91,7 +85,7 @@ pub async fn dispatcher(
                         panic!("Unexpected event: {:?}", swarm_event);
                     }
                     event = network_event_receiver.recv() => {
-                        handle_network_event(event,&mut orderbook_node, &mut swarm)?
+                        handle_network_event(event, &mut orderbook_node, &mut dkg_node, &mut swarm)?
                     }
                 };
             }
@@ -99,7 +93,6 @@ pub async fn dispatcher(
         None => {
             loop {
                 tokio::select! {
-                    line = stdin.next_line() => {handle_stdin(line, &mut swarm)?}
                     swarm_event = swarm.next() => {
                         // All events are handled by the
                         // `NetworkBehaviourEventProcess`es.  I.e. the
@@ -108,7 +101,7 @@ pub async fn dispatcher(
                         panic!("Unexpected event: {:?}", swarm_event);
                     }
                     event = network_event_receiver.recv() => {
-                        handle_network_event(event,&mut orderbook_node, &mut swarm)?
+                        handle_network_event(event, &mut orderbook_node, &mut dkg_node, &mut swarm)?
                     }
                 }
             }
@@ -116,54 +109,48 @@ pub async fn dispatcher(
     }
 }
 
-fn handle_stdin(
-    line: io::Result<Option<String>>,
-    swarm: &mut Swarm,
-) -> io::Result<()> {
-    let line = line?.expect("stdin closed");
-    let tix = Intent { asset: line };
-    let mut tix_bytes = vec![];
-    tix.encode(&mut tix_bytes).unwrap();
-    swarm
-        .gossipsub
-        .publish(Topic::new(String::from(orderbook::TOPIC)), tix_bytes)
-        .unwrap();
-    Ok(())
-}
-
-fn handle_rpc_event(event: Option<Intent>, swarm: &mut Swarm) {
+fn handle_rpc_event(event: Option<IntentMessage>, swarm: &mut Swarm) {
     println!("RPC RECEIVED {:?}", event);
     if let Some(event) = event {
-        let mut tix_bytes = vec![];
-        event.encode(&mut tix_bytes).unwrap();
-        let message_id = swarm
-            .gossipsub
-            .publish(Topic::new(String::from(orderbook::TOPIC)), tix_bytes);
-        println!("did message got gossip ? {:?}", message_id)
+        if let IntentMessage { intent: Some(i) } = event {
+            let mut tix_bytes = vec![];
+            i.encode(&mut tix_bytes).unwrap();
+            let message_id = swarm.gossipsub.publish(
+                Topic::from(super::types::Topic::Orderbook),
+                tix_bytes,
+            );
+            println!("did message got gossip ? {:?}", message_id)
+        }
     }
 }
 fn handle_network_event(
-    event: Option<BehaviourEvent>,
+    event: Option<NetworkEvent>,
     orderbook_node: &mut Orderbook,
+    dkg_node: &mut DKG,
     swarm: &mut Swarm,
-) -> orderbook::Result<()>{
+) -> orderbook::Result<()> {
     println!("NETWORK RECEIVED {:?}", event);
     if let Some(event) = event {
-        if orderbook_node.apply(&event)? {
-            let BehaviourEvent::Message(
-                peer_id,
-                _topic_hash,
-                message_id,
-                _data,
-            ) = event;
-            swarm
-                .gossipsub
-                .report_message_validation_result(
-                    &message_id,
-                    &peer_id.unwrap(),
-                    MessageAcceptance::Accept,
-                )
-                .unwrap();
+        match event {
+            NetworkEvent::Message(msg)
+                if msg.topic == super::types::Topic::Orderbook =>
+            {
+                if orderbook_node.apply(&msg)? {
+                    {
+                        swarm
+                            .gossipsub
+                            .report_message_validation_result(
+                                &msg.message_id,
+                                &msg.peer,
+                                MessageAcceptance::Accept,
+                            )
+                            .unwrap();
+                    }
+                }
+            }
+            NetworkEvent::Message(msg) => {
+                panic!("")
+            }
         }
     }
     Ok(())

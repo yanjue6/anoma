@@ -1,8 +1,8 @@
+use super::types::{self, NetworkEvent};
 use libp2p::gossipsub::{
-    self, Gossipsub, GossipsubEvent, GossipsubMessage, MessageAuthenticity,
-    MessageId, TopicHash, ValidationMode,
+    self, Gossipsub, GossipsubEvent, GossipsubMessage, IdentTopic,
+    MessageAuthenticity, MessageId, TopicHash, ValidationMode,
 };
-use libp2p::PeerId;
 use libp2p::{
     identity::Keypair, swarm::NetworkBehaviourEventProcess, NetworkBehaviour,
 };
@@ -11,27 +11,46 @@ use std::hash::{Hash, Hasher};
 use std::time::Duration;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-/// A behaviour event#
-#[derive(Debug)]
-pub enum BehaviourEvent {
-    /// A new message received from a peer
-    Message(Option<PeerId>, TopicHash, MessageId, Vec<u8>),
-}
-impl From<GossipsubMessage> for BehaviourEvent {
-    fn from(msg: GossipsubMessage) -> Self {
-        Self::Message(
-            msg.source,
-            msg.topic.clone(),
-            message_id(&msg),
-            msg.data.clone(),
-        )
+impl From<types::Topic> for IdentTopic {
+    fn from(topic: types::Topic) -> Self {
+        IdentTopic::new(topic.to_string())
     }
 }
+impl From<types::Topic> for TopicHash {
+    fn from(topic: types::Topic) -> Self {
+        IdentTopic::from(topic).hash()
+    }
+}
+impl From<&TopicHash> for types::Topic {
+    fn from(topic_hash: &TopicHash) -> Self {
+        if topic_hash == &TopicHash::from(types::Topic::Dkg) {
+            types::Topic::Dkg
+        } else if topic_hash == &TopicHash::from(types::Topic::Orderbook) {
+            types::Topic::Orderbook
+        } else {
+            panic!("topic_hash does not correspond to any topic of interest")
+        }
+    }
+}
+
+impl From<GossipsubMessage> for types::NetworkEvent {
+    fn from(msg: GossipsubMessage) -> Self {
+        Self::Message(types::InternMessage {
+            peer: msg
+                .source
+                .expect("cannot convert message with anonymous message peer"),
+            topic: types::Topic::from(&msg.topic),
+            message_id: message_id(&msg),
+            data: msg.data,
+        })
+    }
+}
+
 #[derive(NetworkBehaviour)]
 pub struct Behaviour {
     pub gossipsub: Gossipsub,
     #[behaviour(ignore)]
-    event_chan: Sender<BehaviourEvent>,
+    event_chan: Sender<NetworkEvent>,
 }
 fn message_id(message: &GossipsubMessage) -> MessageId {
     let mut s = DefaultHasher::new();
@@ -40,11 +59,12 @@ fn message_id(message: &GossipsubMessage) -> MessageId {
 }
 
 impl Behaviour {
-    pub fn new(key: Keypair) -> (Self, Receiver<BehaviourEvent>) {
+    pub fn new(key: Keypair) -> (Self, Receiver<NetworkEvent>) {
         // To content-address message, we can take the hash of message and use it as an ID.
 
         // Set a custom gossipsub
         let gossipsub_config = gossipsub::GossipsubConfigBuilder::default()
+            .protocol_id_prefix("orderbook")
             .heartbeat_interval(Duration::from_secs(10))
             .validation_mode(ValidationMode::Strict)
             .message_id_fn(message_id)
@@ -56,7 +76,7 @@ impl Behaviour {
             Gossipsub::new(MessageAuthenticity::Signed(key), gossipsub_config)
                 .expect("Correct configuration");
 
-        let (event_chan, rx) = channel::<BehaviourEvent>(100);
+        let (event_chan, rx) = channel::<NetworkEvent>(100);
         (
             Self {
                 gossipsub,
@@ -80,7 +100,9 @@ impl NetworkBehaviourEventProcess<GossipsubEvent> for Behaviour {
                 "Got message of id: {} from peer: {:?}",
                 message_id, propagation_source,
             );
-            let _res = self.event_chan.try_send(BehaviourEvent::from(message));
+            self.event_chan
+                .try_send(NetworkEvent::from(message))
+                .unwrap();
         }
     }
 }
