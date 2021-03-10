@@ -18,7 +18,7 @@ async fn exec_inlined(ops: InlinedClientOpts) {
     match ops {
         InlinedClientOpts::Transfer(transaction) => transfer(transaction).await,
         InlinedClientOpts::Gossip(Gossip { orderbook, msg }) => {
-            let _res = gossip(orderbook, msg).await;
+            gossip(orderbook, msg).await.unwrap();
         }
     }
 }

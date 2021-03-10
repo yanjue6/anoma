@@ -7,6 +7,7 @@ mod p2p;
 
 use self::config::NetworkConfig;
 use self::orderbook::Orderbook;
+// use self::Dkg::DKG;
 use anoma::{bookkeeper::Bookkeeper, config::*, protobuf::gossip::Intent};
 use std::error::Error;
 use std::fs;

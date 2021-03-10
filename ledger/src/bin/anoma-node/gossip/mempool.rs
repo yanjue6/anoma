@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use anoma::protobuf::gossip::Intent;
 pub use std::hash::{Hash, Hasher};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IntentId(pub Vec<u8>);
 
 impl<T: Into<Vec<u8>>> From<T> for IntentId {
@@ -21,6 +21,7 @@ impl IntentId {
     }
 }
 
+#[derive(Debug)]
 pub struct Mempool {
     intents: HashMap<IntentId, Intent>,
     history: Vec<IntentId>,

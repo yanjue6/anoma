@@ -7,6 +7,7 @@ use anoma::{
     protobuf::gossip::Intent,
 };
 use clap::Clap;
+use std::thread;
 use tokio::sync::mpsc::{self, Receiver};
 
 use crate::gossip;
@@ -17,12 +18,12 @@ pub fn main(config: Config) {
     let NodeOpts { base_dir, rpc, ops } = NodeOpts::parse();
     let rpc_event_receiver = if rpc {
         let (tx, rx) = mpsc::channel(100);
-        rpc::rpc_server(tx);
+        thread::spawn(|| rpc::rpc_server(tx).unwrap());
         Some(rx)
     } else {
         None
     };
-    let config = base_dir.map(|dir| Config::new(dir)).unwrap_or(config);
+    let config = base_dir.map(Config::new).unwrap_or(config);
     exec_inlined(config, rpc_event_receiver, ops)
 }
 
@@ -39,7 +40,13 @@ fn exec_inlined(
             arg.peers,
             arg.topics,
         ),
-        InlinedNodeOpts::RunAnoma => Ok(shell::run(config)),
-        InlinedNodeOpts::ResetAnoma => Ok(shell::reset(config)),
+        InlinedNodeOpts::RunAnoma => {
+            shell::run(config);
+            Ok(())
+        }
+        InlinedNodeOpts::ResetAnoma => {
+            shell::reset(config);
+            Ok(())
+        }
     };
 }
