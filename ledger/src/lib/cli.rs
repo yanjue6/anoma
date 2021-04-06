@@ -6,7 +6,7 @@
 //! client can be dispatched via `anoma node ...` or `anoma client ...`,
 //! respectively.
 
-use clap::{App, Arg, ArgMatches};
+use clap::Arg;
 
 const AUTHOR: &str = "Heliax <TODO@heliax.dev>";
 const CLI_DESCRIPTION: &str = "Anoma cli interface.";
@@ -14,7 +14,9 @@ const CLI_VERSION: &str = "0.1.0";
 const NODE_VERSION: &str = "0.1.0";
 const CLIENT_VERSION: &str = "0.1.0";
 
-pub struct CliBuilder {}
+pub struct CliBuilder;
+
+type App = clap::App<'static>;
 
 impl CliBuilder {
     pub const NODE_COMMAND: &'static str = "node";
@@ -40,49 +42,41 @@ impl CliBuilder {
     pub const PATH_TX_ARG: &'static str = "path";
     pub const ORDERBOOK_INTENT_ARG: &'static str = "orderbook";
 
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn anoma_inline_cli(&self) -> App {
+    pub fn anoma_inline_cli() -> App {
         return App::new(CLI_DESCRIPTION)
             .version(CLI_VERSION)
             .author(AUTHOR)
             .about(CLI_DESCRIPTION)
-            .subcommand(CliBuilder::build_run_gossip_subcommand(&self))
-            .subcommand(CliBuilder::build_run_ledger_subcommand(&self))
-            .subcommand(CliBuilder::build_reset_anoma_subcommand(&self))
-            .subcommand(CliBuilder::build_client_tx_subcommand(&self))
-            .subcommand(CliBuilder::build_client_intent_subcommand(&self))
+            .subcommand(Self::build_run_gossip_subcommand())
+            .subcommand(Self::build_run_ledger_subcommand())
+            .subcommand(Self::build_reset_anoma_subcommand())
+            .subcommand(Self::build_client_tx_subcommand())
+            .subcommand(Self::build_client_intent_subcommand())
             .subcommand(
                 App::new(Self::NODE_COMMAND)
-                    .about("Node inline subcommands")
-                    .subcommand(CliBuilder::build_run_gossip_subcommand(&self))
-                    .subcommand(CliBuilder::build_run_ledger_subcommand(&self))
-                    .subcommand(CliBuilder::build_reset_anoma_subcommand(
-                        &self,
-                    )),
+                    .about("Node sub-commands")
+                    .subcommand(Self::build_run_gossip_subcommand())
+                    .subcommand(Self::build_run_ledger_subcommand())
+                    .subcommand(Self::build_reset_anoma_subcommand()),
             )
             .subcommand(
                 App::new(Self::CLIENT_COMMAND)
-                    .about("Client inline subcommands")
-                    .subcommand(CliBuilder::build_client_tx_subcommand(&self))
-                    .subcommand(CliBuilder::build_client_intent_subcommand(
-                        &self,
-                    )),
+                    .about("Client sub-commands")
+                    .subcommand(Self::build_client_tx_subcommand())
+                    .subcommand(Self::build_client_intent_subcommand()),
             );
     }
 
-    pub fn anoma_client_cli(&self) -> App {
+    pub fn anoma_client_cli() -> App {
         return App::new(CLI_DESCRIPTION)
             .version(CLI_VERSION)
             .author(AUTHOR)
             .about("Anoma client interface.")
-            .subcommand(CliBuilder::build_client_tx_subcommand(&self))
-            .subcommand(CliBuilder::build_client_intent_subcommand(&self));
+            .subcommand(Self::build_client_tx_subcommand())
+            .subcommand(Self::build_client_intent_subcommand());
     }
 
-    pub fn anoma_node_cli(&self) -> App {
+    pub fn anoma_node_cli() -> App {
         return App::new(CLI_DESCRIPTION)
             .version(CLI_VERSION)
             .author(AUTHOR)
@@ -94,14 +88,14 @@ impl CliBuilder {
                     .takes_value(true)
                     .required(false)
                     .default_value(".anoma")
-                    .about("Set the base directiory."),
+                    .about("Set the base directory."),
             )
-            .subcommand(CliBuilder::build_run_gossip_subcommand(&self))
-            .subcommand(CliBuilder::build_run_ledger_subcommand(&self))
-            .subcommand(CliBuilder::build_reset_anoma_subcommand(&self));
+            .subcommand(Self::build_run_gossip_subcommand())
+            .subcommand(Self::build_run_ledger_subcommand())
+            .subcommand(Self::build_reset_anoma_subcommand());
     }
 
-    fn build_client_tx_subcommand(&self) -> App {
+    fn build_client_tx_subcommand() -> App {
         App::new(Self::TX_COMMAND)
             .version(CLIENT_VERSION)
             .about("Send an transaction.")
@@ -121,7 +115,7 @@ impl CliBuilder {
             )
     }
 
-    fn build_client_intent_subcommand(&self) -> App {
+    fn build_client_intent_subcommand() -> App {
         App::new(Self::INTENT_COMMAND)
             .version(CLIENT_VERSION)
             .about("Send an intent.")
@@ -141,7 +135,7 @@ impl CliBuilder {
             )
     }
 
-    fn build_run_gossip_subcommand(&self) -> App {
+    fn build_run_gossip_subcommand() -> App {
         App::new(Self::RUN_GOSSIP_COMMAND)
             .version(NODE_VERSION)
             .about("Run Anoma gossip service.")
@@ -197,13 +191,13 @@ impl CliBuilder {
             )
     }
 
-    fn build_run_ledger_subcommand(&self) -> App {
+    fn build_run_ledger_subcommand() -> App {
         App::new(Self::RUN_LEDGER_COMMAND)
             .version(NODE_VERSION)
             .about("Run Anoma node service.")
     }
 
-    fn build_reset_anoma_subcommand(&self) -> App {
+    fn build_reset_anoma_subcommand() -> App {
         App::new(Self::RESET_ANOMA_COMMAND)
             .version(NODE_VERSION)
             .about("Reset Anoma node state.")

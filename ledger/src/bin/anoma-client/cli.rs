@@ -9,8 +9,7 @@ use tendermint_rpc::{Client, HttpClient};
 use eyre::{Context, Result};
 
 pub async fn main() -> Result<()> {
-    let cli = CliBuilder::new();
-    let mut app = cli.anoma_client_cli();
+    let mut app = CliBuilder::anoma_client_cli();
 
     let matches = app.clone().get_matches();
 

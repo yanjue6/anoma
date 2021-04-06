@@ -6,8 +6,7 @@ use eyre::{Context, Result};
 use crate::{gossip, shell};
 
 pub fn main() -> Result<()> {
-    let cli = CliBuilder::new();
-    let mut app = cli.anoma_node_cli();
+    let mut app = CliBuilder::anoma_node_cli();
 
     let matches = app.clone().get_matches();
 
