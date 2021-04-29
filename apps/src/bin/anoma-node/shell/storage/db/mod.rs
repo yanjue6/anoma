@@ -82,7 +82,7 @@ pub(super) fn open(
         "rocksdb" => Ok(Box::new(rocksdb::open(path)?)),
         "mock" => Ok(Box::new(mock::open()?)),
         _ => Err(Error::UnknownDB {
-            db_type: "unknown DB is specified".to_owned(),
+            db_type: db_type.to_owned(),
         }),
     }
 }
