@@ -129,28 +129,39 @@ fn new_blake2b() -> Blake2b {
     Blake2bBuilder::new(32).personal(b"anoma storage").build()
 }
 
+pub type KVBytes = (Box<[u8]>, Box<[u8]>);
+
 pub struct PrefixIterator<'a> {
-    iter: rocksdb::DBIterator<'a>,
+    iter: Box<dyn Iterator<Item = KVBytes> + 'a>,
     db_prefix: String,
 }
 
 impl<'a> PrefixIterator<'a> {
-    pub fn new(iter: rocksdb::DBIterator<'a>, db_prefix: String) -> Self {
-        PrefixIterator { iter, db_prefix }
+    pub fn new<T>(iter: T, db_prefix: String) -> Self
+    where
+        T: Iterator<Item = KVBytes> + 'a,
+    {
+        PrefixIterator {
+            iter: Box::new(iter),
+            db_prefix,
+        }
     }
 }
 
 impl<'a> Iterator for PrefixIterator<'a> {
     type Item = (String, Vec<u8>, u64);
 
+    /// Returns the next pair and the gas cost
     fn next(&mut self) -> Option<(String, Vec<u8>, u64)> {
         match self.iter.next() {
             Some((key, val)) => {
-                let len = val.len();
                 let key = String::from_utf8(key.to_vec())
                     .expect("Cannot convert from bytes to key string");
                 match key.strip_prefix(&self.db_prefix) {
-                    Some(k) => Some((k.to_owned(), val.to_vec(), len as _)),
+                    Some(k) => {
+                        let gas = k.len() + val.len();
+                        Some((k.to_owned(), val.to_vec(), gas as _))
+                    }
                     None => self.next(),
                 }
             }

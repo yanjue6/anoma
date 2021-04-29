@@ -51,7 +51,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub fn run(config: anoma::config::Ledger) -> Result<()> {
     // open a channel between ABCI (the sender) and the shell (the receiver)
     let (sender, receiver) = mpsc::channel();
-    let shell = Shell::new(receiver, &config.db);
+    let shell = Shell::new(receiver, &config.db_type, &config.db_path);
     // Run Tendermint ABCI server in another thread
     std::thread::spawn(move || tendermint::run(sender, config));
     shell.run()
@@ -59,7 +59,7 @@ pub fn run(config: anoma::config::Ledger) -> Result<()> {
 
 pub fn reset(config: anoma::config::Ledger) -> Result<()> {
     // simply nuke the DB files
-    let db_path = &config.db;
+    let db_path = &config.db_path;
     match std::fs::remove_dir_all(&db_path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
         res => res.map_err(Error::RemoveDB)?,
@@ -91,8 +91,12 @@ pub enum MempoolTxType {
 pub struct MerkleRoot(pub Vec<u8>);
 
 impl Shell {
-    pub fn new(abci: AbciReceiver, db_path: impl AsRef<Path>) -> Self {
-        let mut storage = Storage::new(db_path);
+    pub fn new(
+        abci: AbciReceiver,
+        db_type: &str,
+        db_path: impl AsRef<Path>,
+    ) -> Self {
+        let mut storage = Storage::new(db_type, db_path);
         // TODO load initial accounts from genesis
         let ada = Address::from_raw("ada");
         let alan = Address::from_raw("alan");

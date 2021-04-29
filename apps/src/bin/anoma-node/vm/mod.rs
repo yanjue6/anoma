@@ -598,7 +598,7 @@ mod tests {
         let tx_data = vec![];
         let db_path = TempDir::new("anoma_test")
             .expect("Unable to create a temporary DB directory");
-        let mut storage = Storage::new(db_path.path());
+        let mut storage = Storage::new("mock", db_path.path());
         let mut write_log = WriteLog::new();
         let mut verifiers = HashSet::new();
         let mut gas_meter = BlockGasMeter::default();
@@ -668,7 +668,7 @@ mod tests {
         let addr: Address = raw_addr.hash();
         let db_path = TempDir::new("anoma_test")
             .expect("Unable to create a temporary DB directory");
-        let storage = Storage::new(db_path.path());
+        let storage = Storage::new("mock", db_path.path());
         let write_log = WriteLog::new();
         let mut gas_meter = VpGasMeter::new(0);
         let keys_changed = vec![];
