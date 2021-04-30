@@ -145,7 +145,7 @@ impl TxRunner {
         Self { wasm_store }
     }
 
-    pub fn run<DB: storage::DB>(
+    pub fn run<DB: 'static + storage::DB>(
         &self,
         storage: &Storage<DB>,
         write_log: &mut WriteLog,
@@ -157,7 +157,7 @@ impl TxRunner {
         validate_wasm(&tx_code)?;
 
         // This is not thread-safe, we're assuming single-threaded Tx runner.
-        let storage = unsafe {
+        let storage: EnvHostWrapper<Storage<DB>> = unsafe {
             EnvHostWrapper::new(storage as *const _ as *const c_void)
         };
         // This is also not thread-safe, we're assuming single-threaded Tx
@@ -250,9 +250,9 @@ impl VpRunner {
 
     // TODO consider using a wrapper object for all the host env references
     #[allow(clippy::too_many_arguments)]
-    pub fn run<DB: storage::DB, T: AsRef<[u8]>>(
+    pub fn run<DB: 'static + storage::DB>(
         &self,
-        vp_code: T,
+        vp_code: impl AsRef<[u8]>,
         tx_data: Vec<u8>,
         addr: &Address,
         storage: &Storage<DB>,
@@ -264,7 +264,7 @@ impl VpRunner {
         validate_wasm(vp_code.as_ref())?;
 
         // Read-only access from parallel Vp runners
-        let storage = unsafe {
+        let storage: EnvHostWrapper<Storage<DB>> = unsafe {
             EnvHostWrapper::new(storage as *const _ as *const c_void)
         };
         // Read-only access from parallel Vp runners
