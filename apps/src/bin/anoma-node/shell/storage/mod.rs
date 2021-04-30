@@ -11,6 +11,7 @@ use std::path::Path;
 use anoma_shared::types::{
     Address, BlockHash, BlockHeight, Key, BLOCK_HASH_LENGTH, CHAIN_ID_LENGTH,
 };
+pub use db::DB;
 use sparse_merkle_tree::H256;
 use thiserror::Error;
 use types::MerkleTree;
@@ -37,8 +38,11 @@ static VP_WASM: &[u8] =
 const MIN_STORAGE_GAS: u64 = 1;
 
 #[derive(Debug)]
-pub struct Storage {
-    db: Box<dyn db::DB>,
+pub struct Storage<DB>
+where
+    DB: db::DB,
+{
+    db: DB,
     chain_id: String,
     // TODO Because the transaction may modify and state, we'll probably need
     // to split into read-only last block state and mutable current block state
@@ -48,6 +52,8 @@ pub struct Storage {
     current_height: BlockHeight,
 }
 
+pub type PersistentStorage = Storage<db::rocksdb::RocksDB>;
+
 #[derive(Debug)]
 pub struct BlockStorage {
     tree: MerkleTree,
@@ -56,8 +62,8 @@ pub struct BlockStorage {
     subspaces: HashMap<Key, Vec<u8>>,
 }
 
-impl Storage {
-    pub fn new(db_type: &str, db_path: impl AsRef<Path>) -> Self {
+impl PersistentStorage {
+    pub fn new(db_path: impl AsRef<Path>) -> Self {
         let tree = MerkleTree::default();
         let subspaces = HashMap::new();
         let block = BlockStorage {
@@ -67,13 +73,15 @@ impl Storage {
             subspaces,
         };
         Self {
-            db: db::open(db_type, db_path).expect("cannot open the DB"),
+            db: db::rocksdb::open(db_path).expect("cannot open the DB"),
             chain_id: String::with_capacity(CHAIN_ID_LENGTH),
             block,
             current_height: BlockHeight(0),
         }
     }
+}
 
+impl<DB: db::DB> Storage<DB> {
     /// Load the full state at the last committed height, if any. Returns the
     /// Merkle root hash and the height of the committed block.
     pub fn load_last_state(&mut self) -> Result<Option<(MerkleRoot, u64)>> {
@@ -274,16 +282,13 @@ impl Storage {
 
 #[cfg(test)]
 mod tests {
-    use tempdir::TempDir;
     use types::Value;
 
     use super::*;
 
     #[test]
     fn test_crud_value() {
-        let db_path = TempDir::new("anoma_test")
-            .expect("Unable to create a temporary DB directory");
-        let mut storage = Storage::new("mock", db_path.path());
+        let mut storage = TestStorage::default();
         let key =
             Key::parse("key".to_owned()).expect("cannot parse the key string");
         let value: u64 = 1;
@@ -319,9 +324,7 @@ mod tests {
 
     #[test]
     fn test_commit_block() {
-        let db_path = TempDir::new("anoma_test")
-            .expect("Unable to create a temporary DB directory");
-        let mut storage = Storage::new("mock", db_path.path());
+        let mut storage = TestStorage::default();
         storage
             .set_chain_id("test_chain_id_000000")
             .expect("setting a chain ID failed");
@@ -348,9 +351,7 @@ mod tests {
 
     #[test]
     fn test_iter() {
-        let db_path = TempDir::new("anoma_test")
-            .expect("Unable to create a temporary DB directory");
-        let mut storage = Storage::new("mock", db_path.path());
+        let mut storage = TestStorage::default();
         storage
             .begin_block(BlockHash::default(), BlockHeight(100))
             .expect("begin_block failed");
@@ -381,6 +382,30 @@ mod tests {
                 }
                 None => panic!("read a pair though no expected pair"),
             }
+        }
+    }
+}
+
+/// Storage with a mock DB for testing
+#[cfg(test)]
+pub type TestStorage = Storage<db::mock::MockDB>;
+
+#[cfg(test)]
+impl Default for TestStorage {
+    fn default() -> Self {
+        let tree = MerkleTree::default();
+        let subspaces = HashMap::new();
+        let block = BlockStorage {
+            tree,
+            hash: BlockHash::default(),
+            height: BlockHeight(0),
+            subspaces,
+        };
+        Self {
+            db: db::mock::MockDB::default(),
+            chain_id: String::with_capacity(CHAIN_ID_LENGTH),
+            block,
+            current_height: BlockHeight(0),
         }
     }
 }

@@ -16,10 +16,10 @@ use super::super::types::{MerkleTree, PrefixIterator, Value};
 use super::{BlockState, Error, Result, DB};
 
 #[derive(Debug)]
-pub(super) struct RocksDB(rocksdb::DB);
+pub struct RocksDB(rocksdb::DB);
 
 /// Open RocksDB for the DB
-pub(super) fn open(path: impl AsRef<Path>) -> Result<RocksDB> {
+pub fn open(path: impl AsRef<Path>) -> Result<RocksDB> {
     let mut cf_opts = Options::default();
     // ! recommended initial setup https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#other-general-options
     cf_opts.set_level_compaction_dynamic_level_bytes(true);

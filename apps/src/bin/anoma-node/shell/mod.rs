@@ -18,7 +18,7 @@ use prost::Message;
 use thiserror::Error;
 
 use self::gas::{BlockGasMeter, VpGasMeter};
-use self::storage::Storage;
+use self::storage::PersistentStorage;
 use self::tendermint::{AbciMsg, AbciReceiver};
 use crate::vm::host_env::write_log::WriteLog;
 use crate::vm::{self, TxRunner, VpRunner};
@@ -51,7 +51,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub fn run(config: anoma::config::Ledger) -> Result<()> {
     // open a channel between ABCI (the sender) and the shell (the receiver)
     let (sender, receiver) = mpsc::channel();
-    let shell = Shell::new(receiver, &config.db_type, &config.db_path);
+    let shell = Shell::new(receiver, &config.db_path);
     // Run Tendermint ABCI server in another thread
     std::thread::spawn(move || tendermint::run(sender, config));
     shell.run()
@@ -72,7 +72,7 @@ pub fn reset(config: anoma::config::Ledger) -> Result<()> {
 #[derive(Debug)]
 pub struct Shell {
     abci: AbciReceiver,
-    storage: storage::Storage,
+    storage: storage::PersistentStorage,
     // The gas meter is sync with mutex to allow VPs sharing it
     // TODO it should be possible to impl a lock-free gas metering for VPs
     gas_meter: BlockGasMeter,
@@ -91,12 +91,8 @@ pub enum MempoolTxType {
 pub struct MerkleRoot(pub Vec<u8>);
 
 impl Shell {
-    pub fn new(
-        abci: AbciReceiver,
-        db_type: &str,
-        db_path: impl AsRef<Path>,
-    ) -> Self {
-        let mut storage = Storage::new(db_type, db_path);
+    pub fn new(abci: AbciReceiver, db_path: impl AsRef<Path>) -> Self {
+        let mut storage = PersistentStorage::new(db_path);
         // TODO load initial accounts from genesis
         let ada = Address::from_raw("ada");
         let alan = Address::from_raw("alan");
@@ -441,7 +437,7 @@ fn run_tx(
     tx_bytes: &[u8],
     block_gas_meter: &mut BlockGasMeter,
     write_log: &mut WriteLog,
-    storage: &Storage,
+    storage: &PersistentStorage,
 ) -> Result<TxResult> {
     block_gas_meter
         .add_base_transaction_fee(tx_bytes.len())
@@ -464,7 +460,7 @@ fn run_tx(
 
 fn check_vps(
     tx: &Tx,
-    storage: &Storage,
+    storage: &PersistentStorage,
     gas_meter: &mut BlockGasMeter,
     write_log: &mut WriteLog,
     verifiers: &HashSet<Address>,
@@ -545,7 +541,7 @@ fn check_vps(
 
 fn execute_tx(
     tx: &Tx,
-    storage: &Storage,
+    storage: &PersistentStorage,
     gas_meter: &mut BlockGasMeter,
     write_log: &mut WriteLog,
 ) -> Result<HashSet<Address>> {

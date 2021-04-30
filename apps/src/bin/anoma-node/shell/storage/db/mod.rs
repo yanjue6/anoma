@@ -10,11 +10,11 @@
 //!   - `hash`: block hash
 //!   - `subspace`: any byte data
 
-mod mock;
-mod rocksdb;
+#[cfg(test)]
+pub mod mock;
+pub mod rocksdb;
 
 use std::collections::HashMap;
-use std::path::Path;
 
 use anoma_shared::types::{BlockHash, BlockHeight, Key};
 use thiserror::Error;
@@ -33,13 +33,11 @@ pub enum Error {
     UnknownKey { key: String },
     #[error("Key error {0}")]
     KeyError(anoma_shared::types::Error),
-    #[error("Found an unknown DB type: {db_type}")]
-    UnknownDB { db_type: String },
     #[error("DB error: {error}")]
     DBError { error: String },
 }
 
-pub(super) struct BlockState {
+pub struct BlockState {
     pub chain_id: String,
     pub tree: MerkleTree,
     pub hash: BlockHash,
@@ -47,7 +45,7 @@ pub(super) struct BlockState {
     pub subspaces: HashMap<Key, Vec<u8>>,
 }
 
-pub(super) trait DB: std::fmt::Debug {
+pub trait DB: std::fmt::Debug {
     /// Flush data on the memory to persistent them
     fn flush(&self) -> Result<()>;
 
@@ -72,17 +70,4 @@ pub(super) trait DB: std::fmt::Debug {
 
     /// Read the last committed block
     fn read_last_block(&mut self) -> Result<Option<BlockState>>;
-}
-
-pub(super) fn open(
-    db_type: &str,
-    path: impl AsRef<Path>,
-) -> Result<Box<dyn DB>> {
-    match db_type {
-        "rocksdb" => Ok(Box::new(rocksdb::open(path)?)),
-        "mock" => Ok(Box::new(mock::open()?)),
-        _ => Err(Error::UnknownDB {
-            db_type: db_type.to_owned(),
-        }),
-    }
 }

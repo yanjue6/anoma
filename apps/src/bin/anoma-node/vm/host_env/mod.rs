@@ -18,11 +18,11 @@ use self::write_log::WriteLog;
 use super::memory::AnomaMemory;
 use super::{EnvHostWrapper, MutEnvHostWrapper};
 use crate::shell::gas::{BlockGasMeter, VpGasMeter};
-use crate::shell::storage::Storage;
+use crate::shell::storage::PersistentStorage;
 
 #[derive(Clone)]
 struct TxEnv<'a> {
-    storage: EnvHostWrapper<Storage>,
+    storage: EnvHostWrapper<PersistentStorage>,
     // not thread-safe, assuming single-threaded Tx runner
     write_log: MutEnvHostWrapper<WriteLog>,
     // not thread-safe, assuming single-threaded Tx runner
@@ -51,7 +51,7 @@ struct VpEnv<'a> {
     // is no shared access
     iterators: MutEnvHostWrapper<PrefixIterators<'a>>,
     // thread-safe read-only access from parallel Vp runners
-    storage: EnvHostWrapper<Storage>,
+    storage: EnvHostWrapper<PersistentStorage>,
     // thread-safe read-only access from parallel Vp runners
     write_log: EnvHostWrapper<WriteLog>,
     // TODO In parallel runs, we can change only the maximum used gas of all
@@ -103,7 +103,7 @@ impl WasmerEnv for FilterEnv {
 /// transaction code
 pub fn prepare_tx_imports(
     wasm_store: &Store,
-    storage: EnvHostWrapper<Storage>,
+    storage: EnvHostWrapper<PersistentStorage>,
     write_log: MutEnvHostWrapper<WriteLog>,
     iterators: MutEnvHostWrapper<PrefixIterators<'static>>,
     verifiers: MutEnvHostWrapper<HashSet<Address>>,
@@ -147,7 +147,7 @@ pub fn prepare_tx_imports(
 pub fn prepare_vp_imports(
     wasm_store: &Store,
     addr: Address,
-    storage: EnvHostWrapper<Storage>,
+    storage: EnvHostWrapper<PersistentStorage>,
     write_log: EnvHostWrapper<WriteLog>,
     iterators: MutEnvHostWrapper<PrefixIterators<'static>>,
     gas_meter: MutEnvHostWrapper<VpGasMeter>,
@@ -318,7 +318,7 @@ fn tx_storage_read(
         }
         None => {
             // when not found in write log, try to read from the storage
-            let storage: &Storage = unsafe { &*(env.storage.get()) };
+            let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
             let (value, gas) = storage.read(&key).expect("storage read failed");
             tx_add_gas(env, gas);
             match value {
@@ -365,7 +365,7 @@ fn tx_storage_has_key(env: &TxEnv, key_ptr: u64, key_len: u64) -> u64 {
         Some(&write_log::StorageModification::InitAccount { .. }) => 1,
         None => {
             // when not found in write log, try to check the storage
-            let storage: &Storage = unsafe { &*(env.storage.get()) };
+            let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
             let (present, gas) =
                 storage.has_key(&key).expect("storage has_key failed");
             tx_add_gas(env, gas);
@@ -433,7 +433,7 @@ fn tx_storage_read_varlen(
         }
         None => {
             // when not found in write log, try to read from the storage
-            let storage: &Storage = unsafe { &*(env.storage.get()) };
+            let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
             let (value, gas) = storage.read(&key).expect("storage read failed");
             tx_add_gas(env, gas);
             match value {
@@ -474,7 +474,7 @@ fn tx_storage_iter_prefix(
 
     let prefix = Key::parse(prefix).expect("Cannot parse the prefix string");
 
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let iterators: &mut PrefixIterators =
         unsafe { &mut *(env.iterators.get()) };
     let (iter, gas) = storage.iter_prefix(&prefix);
@@ -678,7 +678,7 @@ fn vp_storage_read_pre(
 
     // try to read from the storage
     let key = Key::parse(key).expect("Cannot parse the key string");
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (value, gas) = storage.read(&key).expect("storage read failed");
     vp_add_gas(env, gas);
     log::debug!(
@@ -756,7 +756,7 @@ fn vp_storage_read_post(
         }
         None => {
             // when not found in write log, try to read from the storage
-            let storage: &Storage = unsafe { &*(env.storage.get()) };
+            let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
             let (value, gas) = storage.read(&key).expect("storage read failed");
             vp_add_gas(env, gas);
             match value {
@@ -796,7 +796,7 @@ fn vp_storage_read_pre_varlen(
 
     // try to read from the storage
     let key = Key::parse(key).expect("Cannot parse the key string");
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (value, gas) = storage.read(&key).expect("storage read failed");
     vp_add_gas(env, gas);
     log::debug!(
@@ -882,7 +882,7 @@ fn vp_storage_read_post_varlen(
         }
         None => {
             // when not found in write log, try to read from the storage
-            let storage: &Storage = unsafe { &*(env.storage.get()) };
+            let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
             let (value, gas) = storage.read(&key).expect("storage read failed");
             vp_add_gas(env, gas);
             match value {
@@ -918,7 +918,7 @@ fn vp_storage_has_key_pre(env: &VpEnv, key_ptr: u64, key_len: u64) -> u64 {
 
     let key = Key::parse(key).expect("Cannot parse the key string");
 
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (present, gas) = storage.has_key(&key).expect("storage has_key failed");
     vp_add_gas(env, gas);
     if present { 1 } else { 0 }
@@ -951,7 +951,7 @@ fn vp_storage_has_key_post(env: &VpEnv, key_ptr: u64, key_len: u64) -> u64 {
         Some(&write_log::StorageModification::InitAccount { .. }) => 1,
         None => {
             // when not found in write log, try to check the storage
-            let storage: &Storage = unsafe { &*(env.storage.get()) };
+            let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
             let (present, gas) =
                 storage.has_key(&key).expect("storage has_key failed");
             vp_add_gas(env, gas);
@@ -978,7 +978,7 @@ fn vp_storage_iter_prefix(
 
     let prefix = Key::parse(prefix).expect("Cannot parse the prefix string");
 
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let iterators: &mut PrefixIterators =
         unsafe { &mut *(env.iterators.get()) };
     let (iter, gas) = storage.iter_prefix(&prefix);
@@ -1264,7 +1264,7 @@ fn tx_init_account(
 
     log::debug!("tx_init_account address: {}, parent: {}", addr, parent_addr);
 
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (parent_exists, gas) = storage
         .exists(&parent_addr_hash)
         .expect("Cannot read storage");
@@ -1291,7 +1291,7 @@ fn tx_init_account(
 
 /// Getting the chain ID function exposed to the wasm VM Tx environment.
 fn tx_get_chain_id(env: &TxEnv, result_ptr: u64) {
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (chain_id, gas) = storage.get_chain_id();
     tx_add_gas(env, gas);
     let gas = env
@@ -1305,7 +1305,7 @@ fn tx_get_chain_id(env: &TxEnv, result_ptr: u64) {
 /// environment. The height is that of the block to which the current
 /// transaction is being applied.
 fn tx_get_block_height(env: &TxEnv) -> u64 {
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (height, gas) = storage.get_block_height();
     tx_add_gas(env, gas);
     height.0
@@ -1314,7 +1314,7 @@ fn tx_get_block_height(env: &TxEnv) -> u64 {
 /// Getting the block hash function exposed to the wasm VM Tx environment. The
 /// hash is that of the block to which the current transaction is being applied.
 fn tx_get_block_hash(env: &TxEnv, result_ptr: u64) {
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (hash, gas) = storage.get_block_hash();
     tx_add_gas(env, gas);
     let gas = env
@@ -1326,7 +1326,7 @@ fn tx_get_block_hash(env: &TxEnv, result_ptr: u64) {
 
 /// Getting the chain ID function exposed to the wasm VM VP environment.
 fn vp_get_chain_id(env: &VpEnv, result_ptr: u64) {
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (chain_id, gas) = storage.get_chain_id();
     vp_add_gas(env, gas);
     let gas = env
@@ -1340,7 +1340,7 @@ fn vp_get_chain_id(env: &VpEnv, result_ptr: u64) {
 /// environment. The height is that of the block to which the current
 /// transaction is being applied.
 fn vp_get_block_height(env: &VpEnv) -> u64 {
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (height, gas) = storage.get_block_height();
     vp_add_gas(env, gas);
     height.0
@@ -1349,7 +1349,7 @@ fn vp_get_block_height(env: &VpEnv) -> u64 {
 /// Getting the block hash function exposed to the wasm VM VP environment. The
 /// hash is that of the block to which the current transaction is being applied.
 fn vp_get_block_hash(env: &VpEnv, result_ptr: u64) {
-    let storage: &Storage = unsafe { &*(env.storage.get()) };
+    let storage: &PersistentStorage = unsafe { &*(env.storage.get()) };
     let (hash, gas) = storage.get_block_hash();
     vp_add_gas(env, gas);
     let gas = env

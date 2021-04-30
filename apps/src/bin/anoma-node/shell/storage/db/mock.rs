@@ -12,10 +12,12 @@ use super::super::types::{KVBytes, MerkleTree, PrefixIterator, Value};
 use super::{BlockState, Error, Result, DB};
 
 #[derive(Debug)]
-pub(super) struct MockDB(BTreeMap<String, Vec<u8>>);
+pub struct MockDB(BTreeMap<String, Vec<u8>>);
 
-pub(super) fn open() -> Result<MockDB> {
-    Ok(MockDB(BTreeMap::new()))
+impl Default for MockDB {
+    fn default() -> MockDB {
+        MockDB(BTreeMap::new())
+    }
 }
 
 impl DB for MockDB {
