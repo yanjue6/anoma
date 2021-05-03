@@ -1,7 +1,7 @@
 //! The storage module handles both the current state in-memory and the stored
 //! state in DB.
 
-pub(crate) mod db;
+mod db;
 mod types;
 
 use std::collections::HashMap;

@@ -155,12 +155,7 @@ impl TxRunner {
         tx_data: Vec<u8>,
     ) -> Result<()>
     where
-        DB: 'static
-            + storage::DB
-            + for<'iter> storage::DBIter<
-                'iter,
-                // PrefixIter = storage::PersistentPrefixIterator<'iter>,
-            >,
+        DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
     {
         validate_wasm(&tx_code)?;
 
@@ -269,12 +264,7 @@ impl VpRunner {
         verifiers: HashSet<Address>,
     ) -> Result<bool>
     where
-        DB: 'static
-            + storage::DB
-            + for<'iter> storage::DBIter<
-                'iter,
-                // PrefixIter = storage::PersistentPrefixIterator<'iter>,
-            >,
+        DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
     {
         validate_wasm(vp_code.as_ref())?;
 
