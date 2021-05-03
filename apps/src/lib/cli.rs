@@ -322,7 +322,7 @@ fn run_gossip_subcommand() -> App {
             Arg::new(RPC_ARG)
                 .long(RPC_ARG)
                 .multiple(false)
-                .takes_value(false)
+                .takes_value(true)
                 .about("Enable RPC service."),
         )
         .arg(
@@ -465,6 +465,8 @@ pub fn update_gossip_config(
              the matchmaker"
         );
     }
-    config.rpc = args.is_present(RPC_ARG);
+    if let Some(address) = parse_opt(args, RPC_ARG) {
+        config.rpc = Some(config::RpcServer { address });
+    }
     Ok(())
 }
