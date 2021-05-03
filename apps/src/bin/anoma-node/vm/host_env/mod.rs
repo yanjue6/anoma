@@ -20,12 +20,15 @@ use super::{EnvHostWrapper, MutEnvHostWrapper};
 use crate::shell::gas::{BlockGasMeter, VpGasMeter};
 use crate::shell::storage::{self, Storage};
 
-struct TxEnv<'a, DB: storage::DB> {
+struct TxEnv<DB>
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     storage: EnvHostWrapper<Storage<DB>>,
     // not thread-safe, assuming single-threaded Tx runner
     write_log: MutEnvHostWrapper<WriteLog>,
     // not thread-safe, assuming single-threaded Tx runner
-    iterators: MutEnvHostWrapper<PrefixIterators<'a>>,
+    iterators: MutEnvHostWrapper<PrefixIterators<'static, DB>>,
     // not thread-safe, assuming single-threaded Tx runner
     verifiers: MutEnvHostWrapper<HashSet<Address>>,
     // not thread-safe, assuming single-threaded Tx runner
@@ -37,7 +40,10 @@ struct TxEnv<'a, DB: storage::DB> {
 // implement `DB: Clone` which is required by `WasmerEnv`, but we don't store
 // the `DB` directly here, so we don't need to. Instead, we store the reference
 // to `DB` inside the `EnvHostWrapper` which is safe to clone.
-impl<DB: storage::DB> Clone for TxEnv<'_, DB> {
+impl<DB> Clone for TxEnv<DB>
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     fn clone(&self) -> Self {
         Self {
             storage: self.storage.clone(),
@@ -50,7 +56,10 @@ impl<DB: storage::DB> Clone for TxEnv<'_, DB> {
     }
 }
 
-impl<DB: storage::DB> WasmerEnv for TxEnv<'_, DB> {
+impl<DB> WasmerEnv for TxEnv<DB>
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     fn init_with_instance(
         &mut self,
         instance: &Instance,
@@ -59,12 +68,15 @@ impl<DB: storage::DB> WasmerEnv for TxEnv<'_, DB> {
     }
 }
 
-struct VpEnv<'a, DB: storage::DB> {
+struct VpEnv<DB>
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     /// The address of the account that owns the VP
     addr: Address,
     // this is not thread-safe, but because each VP has its own instance there
     // is no shared access
-    iterators: MutEnvHostWrapper<PrefixIterators<'a>>,
+    iterators: MutEnvHostWrapper<PrefixIterators<'static, DB>>,
     // thread-safe read-only access from parallel Vp runners
     storage: EnvHostWrapper<Storage<DB>>,
     // thread-safe read-only access from parallel Vp runners
@@ -79,7 +91,10 @@ struct VpEnv<'a, DB: storage::DB> {
 // implement `DB: Clone` which is required by `WasmerEnv`, but we don't store
 // the `DB` directly here, so we don't need to. Instead, we store the reference
 // to `DB` inside the `EnvHostWrapper` which is safe to clone.
-impl<DB: storage::DB> Clone for VpEnv<'_, DB> {
+impl<DB> Clone for VpEnv<DB>
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     fn clone(&self) -> Self {
         Self {
             addr: self.addr.clone(),
@@ -92,7 +107,10 @@ impl<DB: storage::DB> Clone for VpEnv<'_, DB> {
     }
 }
 
-impl<'a, DB: storage::DB> WasmerEnv for VpEnv<'a, DB> {
+impl<DB> WasmerEnv for VpEnv<DB>
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     fn init_with_instance(
         &mut self,
         instance: &Instance,
@@ -137,18 +155,13 @@ pub fn prepare_tx_imports<DB>(
     wasm_store: &Store,
     storage: EnvHostWrapper<Storage<DB>>,
     write_log: MutEnvHostWrapper<WriteLog>,
-    iterators: MutEnvHostWrapper<PrefixIterators<'static>>,
+    iterators: MutEnvHostWrapper<PrefixIterators<'static, DB>>,
     verifiers: MutEnvHostWrapper<HashSet<Address>>,
     gas_meter: MutEnvHostWrapper<BlockGasMeter>,
     initial_memory: Memory,
 ) -> ImportObject
 where
-    DB: 'static
-        + storage::DB
-        + for<'iter> storage::DBIter<
-            'iter,
-            // PrefixIter = storage::PersistentPrefixIterator<'iter>,
-        >,
+    DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
 {
     let env = TxEnv {
         storage,
@@ -189,17 +202,12 @@ pub fn prepare_vp_imports<DB>(
     addr: Address,
     storage: EnvHostWrapper<Storage<DB>>,
     write_log: EnvHostWrapper<WriteLog>,
-    iterators: MutEnvHostWrapper<PrefixIterators<'static>>,
+    iterators: MutEnvHostWrapper<PrefixIterators<'static, DB>>,
     gas_meter: MutEnvHostWrapper<VpGasMeter>,
     initial_memory: Memory,
 ) -> ImportObject
 where
-    DB: 'static
-        + storage::DB
-        + for<'iter> storage::DBIter<
-            'iter,
-            PrefixIter = storage::PersistentPrefixIterator<'iter>,
-        >,
+    DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
 {
     let env = VpEnv {
         addr,
@@ -281,11 +289,17 @@ pub fn prepare_filter_imports(
 }
 
 /// Called from tx wasm to request to use the given gas amount
-fn tx_charge_gas<DB: storage::DB>(env: &TxEnv<DB>, used_gas: i32) {
+fn tx_charge_gas<DB>(env: &TxEnv<DB>, used_gas: i32)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     tx_add_gas(env, used_gas as _)
 }
 
-fn tx_add_gas<DB: storage::DB>(env: &TxEnv<DB>, used_gas: u64) {
+fn tx_add_gas<DB>(env: &TxEnv<DB>, used_gas: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let gas_meter: &mut BlockGasMeter = unsafe { &mut *(env.gas_meter.get()) };
     // if we run out of gas, we need to stop the execution
     if let Err(err) = gas_meter.add(used_gas) {
@@ -298,11 +312,17 @@ fn tx_add_gas<DB: storage::DB>(env: &TxEnv<DB>, used_gas: u64) {
 }
 
 /// Called from VP wasm to request to use the given gas amount
-fn vp_charge_gas<DB: storage::DB>(env: &VpEnv<DB>, used_gas: i32) {
+fn vp_charge_gas<DB>(env: &VpEnv<DB>, used_gas: i32)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     vp_add_gas(env, used_gas as _)
 }
 
-fn vp_add_gas<DB: storage::DB>(env: &VpEnv<DB>, used_gas: u64) {
+fn vp_add_gas<DB>(env: &VpEnv<DB>, used_gas: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let gas_meter: &mut VpGasMeter = unsafe { &mut *(env.gas_meter.get()) };
     if let Err(err) = gas_meter.add(used_gas) {
         log::warn!(
@@ -315,12 +335,15 @@ fn vp_add_gas<DB: storage::DB>(env: &VpEnv<DB>, used_gas: u64) {
 
 /// Storage read function exposed to the wasm VM Tx environment. It will try to
 /// read from the write log first and if no entry found then from the storage.
-fn tx_storage_read<DB: storage::DB>(
+fn tx_storage_read<DB>(
     env: &TxEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     result_ptr: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -389,11 +412,10 @@ fn tx_storage_read<DB: storage::DB>(
 
 /// Storage `has_key` function exposed to the wasm VM Tx environment. It will
 /// try to check the write log first and if no entry found then the storage.
-fn tx_storage_has_key<DB: storage::DB>(
-    env: &TxEnv<DB>,
-    key_ptr: u64,
-    key_len: u64,
-) -> u64 {
+fn tx_storage_has_key<DB>(env: &TxEnv<DB>, key_ptr: u64, key_len: u64) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -421,11 +443,7 @@ fn tx_storage_has_key<DB: storage::DB>(
             let (present, gas) =
                 storage.has_key(&key).expect("storage has_key failed");
             tx_add_gas(env, gas);
-            if present {
-                1
-            } else {
-                0
-            }
+            if present { 1 } else { 0 }
         }
     }
 }
@@ -435,12 +453,15 @@ fn tx_storage_has_key<DB: storage::DB>(
 ///
 /// Returns [`-1`] when the key is not present, or the length of the data when
 /// the key is present (the length may be [`0`]).
-fn tx_storage_read_varlen<DB: storage::DB>(
+fn tx_storage_read_varlen<DB>(
     env: &TxEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     result_ptr: u64,
-) -> i64 {
+) -> i64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -514,18 +535,14 @@ fn tx_storage_read_varlen<DB: storage::DB>(
 
 /// Storage prefix iterator function exposed to the wasm VM Tx environment.
 /// It will try to get an iterator from the storage and return the corresponding
-/// ID of the interator.
+/// ID of the iterator.
 fn tx_storage_iter_prefix<DB>(
     env: &TxEnv<DB>,
     prefix_ptr: u64,
     prefix_len: u64,
 ) -> u64
 where
-    DB: storage::DB
-        + for<'iter> storage::DBIter<
-            'iter,
-            // PrefixIter = storage::PersistentPrefixIterator<'iter>,
-        >,
+    DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
 {
     let (prefix, gas) = env
         .memory
@@ -538,7 +555,7 @@ where
     let prefix = Key::parse(prefix).expect("Cannot parse the prefix string");
 
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let (iter, gas) = storage.iter_prefix(&prefix);
     tx_add_gas(env, gas);
@@ -548,11 +565,14 @@ where
 /// Storage prefix iterator next function exposed to the wasm VM Tx environment.
 /// It will read a key value pair from the write log first and if no entry found
 /// then from the storage.
-fn tx_storage_iter_next<DB: storage::DB>(
+fn tx_storage_iter_next<DB>(
     env: &TxEnv<DB>,
     iter_id: u64,
     result_ptr: u64,
-) -> u64 {
+) -> u64
+where
+    DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     log::debug!(
         "tx_storage_iter_next iter_id {}, result_ptr {}",
         iter_id,
@@ -560,7 +580,7 @@ fn tx_storage_iter_next<DB: storage::DB>(
     );
 
     let write_log: &WriteLog = unsafe { &*(env.write_log.get()) };
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let iter_id = PrefixIteratorId::new(iter_id);
     while let Some((key, val, iter_gas)) = iterators.next(iter_id) {
@@ -614,11 +634,14 @@ fn tx_storage_iter_next<DB: storage::DB>(
 ///
 /// Returns [`-1`] when the key is not present, or the length of the data when
 /// the key is present (the length may be [`0`]).
-fn tx_storage_iter_next_varlen<DB: storage::DB>(
+fn tx_storage_iter_next_varlen<DB>(
     env: &TxEnv<DB>,
     iter_id: u64,
     result_ptr: u64,
-) -> i64 {
+) -> i64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     log::debug!(
         "tx_storage_iter_next iter_id {}, result_ptr {}",
         iter_id,
@@ -626,7 +649,7 @@ fn tx_storage_iter_next_varlen<DB: storage::DB>(
     );
 
     let write_log: &WriteLog = unsafe { &*(env.write_log.get()) };
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let iter_id = PrefixIteratorId::new(iter_id);
     while let Some((key, val, iter_gas)) = iterators.next(iter_id) {
@@ -680,13 +703,15 @@ fn tx_storage_iter_next_varlen<DB: storage::DB>(
 
 /// Storage write function exposed to the wasm VM Tx environment. The given
 /// key/value will be written to the write log.
-fn tx_storage_write<DB: storage::DB>(
+fn tx_storage_write<DB>(
     env: &TxEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     val_ptr: u64,
     val_len: u64,
-) {
+) where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -710,11 +735,10 @@ fn tx_storage_write<DB: storage::DB>(
 
 /// Storage delete function exposed to the wasm VM Tx environment. The given
 /// key/value will be written as deleted to the write log.
-fn tx_storage_delete<DB: storage::DB>(
-    env: &TxEnv<DB>,
-    key_ptr: u64,
-    key_len: u64,
-) -> u64 {
+fn tx_storage_delete<DB>(env: &TxEnv<DB>, key_ptr: u64, key_len: u64) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -735,12 +759,15 @@ fn tx_storage_delete<DB: storage::DB>(
 
 /// Storage read prior state (before tx execution) function exposed to the wasm
 /// VM VP environment. It will try to read from the storage.
-fn vp_storage_read_pre<DB: storage::DB>(
+fn vp_storage_read_pre<DB>(
     env: &VpEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     result_ptr: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -777,12 +804,15 @@ fn vp_storage_read_pre<DB: storage::DB>(
 /// Storage read posterior state (after tx execution) function exposed to the
 /// wasm VM VP environment. It will try to read from the write log first and if
 /// no entry found then from the storage.
-fn vp_storage_read_post<DB: storage::DB>(
+fn vp_storage_read_post<DB>(
     env: &VpEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     result_ptr: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -853,12 +883,15 @@ fn vp_storage_read_post<DB: storage::DB>(
 ///
 /// Returns [`-1`] when the key is not present, or the length of the data when
 /// the key is present (the length may be [`0`]).
-fn vp_storage_read_pre_varlen<DB: storage::DB>(
+fn vp_storage_read_pre_varlen<DB>(
     env: &VpEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     result_ptr: u64,
-) -> i64 {
+) -> i64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -900,12 +933,15 @@ fn vp_storage_read_pre_varlen<DB: storage::DB>(
 ///
 /// Returns [`-1`] when the key is not present, or the length of the data when
 /// the key is present (the length may be [`0`]).
-fn vp_storage_read_post_varlen<DB: storage::DB>(
+fn vp_storage_read_post_varlen<DB>(
     env: &VpEnv<DB>,
     key_ptr: u64,
     key_len: u64,
     result_ptr: u64,
-) -> i64 {
+) -> i64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -978,11 +1014,14 @@ fn vp_storage_read_post_varlen<DB: storage::DB>(
 
 /// Storage `has_key` in prior state (before tx execution) function exposed to
 /// the wasm VM VP environment. It will try to read from the storage.
-fn vp_storage_has_key_pre<DB: storage::DB>(
+fn vp_storage_has_key_pre<DB>(
     env: &VpEnv<DB>,
     key_ptr: u64,
     key_len: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -996,21 +1035,20 @@ fn vp_storage_has_key_pre<DB: storage::DB>(
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (present, gas) = storage.has_key(&key).expect("storage has_key failed");
     vp_add_gas(env, gas);
-    if present {
-        1
-    } else {
-        0
-    }
+    if present { 1 } else { 0 }
 }
 
 /// Storage `has_key` in posterior state (after tx execution) function exposed
 /// to the wasm VM VP environment. It will
 /// try to check the write log first and if no entry found then the storage.
-fn vp_storage_has_key_post<DB: storage::DB>(
+fn vp_storage_has_key_post<DB>(
     env: &VpEnv<DB>,
     key_ptr: u64,
     key_len: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (key, gas) = env
         .memory
         .read_string(key_ptr, key_len as _)
@@ -1038,29 +1076,21 @@ fn vp_storage_has_key_post<DB: storage::DB>(
             let (present, gas) =
                 storage.has_key(&key).expect("storage has_key failed");
             vp_add_gas(env, gas);
-            if present {
-                1
-            } else {
-                0
-            }
+            if present { 1 } else { 0 }
         }
     }
 }
 
 /// Storage prefix iterator function exposed to the wasm VM VP environment.
 /// It will try to get an iterator from the storage and return the corresponding
-/// ID of the interator.
+/// ID of the iterator.
 fn vp_storage_iter_prefix<DB>(
     env: &VpEnv<DB>,
     prefix_ptr: u64,
     prefix_len: u64,
 ) -> u64
 where
-    DB: storage::DB
-        + for<'iter> storage::DBIter<
-            'iter,
-            PrefixIter = storage::PersistentPrefixIterator<'iter>,
-        >,
+    DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
 {
     let (prefix, gas) = env
         .memory
@@ -1073,27 +1103,30 @@ where
     let prefix = Key::parse(prefix).expect("Cannot parse the prefix string");
 
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
-    let (iter, gas) = storage.iter_prefix(&prefix);
+    let (iter, gas) = (*storage).iter_prefix(&prefix);
     vp_add_gas(env, gas);
     iterators.insert(iter).id()
 }
 
 /// Storage prefix iterator next (before tx execution) function exposed to the
 /// wasm VM VP environment. It will read a key value pair from the storage.
-fn vp_storage_iter_pre_next<DB: storage::DB>(
+fn vp_storage_iter_pre_next<DB>(
     env: &VpEnv<DB>,
     iter_id: u64,
     result_ptr: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     log::debug!(
         "vp_storage_iter_pre_next iter_id {}, result_ptr {}",
         iter_id,
         result_ptr,
     );
 
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let iter_id = PrefixIteratorId::new(iter_id);
     if let Some((key, val, gas)) = iterators.next(iter_id) {
@@ -1115,11 +1148,14 @@ fn vp_storage_iter_pre_next<DB: storage::DB>(
 /// Storage prefix iterator next (after tx execution) function exposed to the
 /// wasm VM VP environment. It will read a key value pair from the write log
 /// first and if no entry found then from the storage.
-fn vp_storage_iter_post_next<DB: storage::DB>(
+fn vp_storage_iter_post_next<DB>(
     env: &VpEnv<DB>,
     iter_id: u64,
     result_ptr: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     log::debug!(
         "vp_storage_iter_post_next iter_id {}, result_ptr {}",
         iter_id,
@@ -1127,7 +1163,7 @@ fn vp_storage_iter_post_next<DB: storage::DB>(
     );
 
     let write_log: &WriteLog = unsafe { &*(env.write_log.get()) };
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let iter_id = PrefixIteratorId::new(iter_id);
     while let Some((key, val, iter_gas)) = iterators.next(iter_id) {
@@ -1180,18 +1216,21 @@ fn vp_storage_iter_post_next<DB: storage::DB>(
 ///
 /// Returns [`-1`] when the key is not present, or the length of the data when
 /// the key is present (the length may be [`0`]).
-fn vp_storage_iter_pre_next_varlen<DB: storage::DB>(
+fn vp_storage_iter_pre_next_varlen<DB>(
     env: &VpEnv<DB>,
     iter_id: u64,
     result_ptr: u64,
-) -> i64 {
+) -> i64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     log::debug!(
         "vp_storage_iter_pre_next_varlen iter_id {}, result_ptr {}",
         iter_id,
         result_ptr,
     );
 
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let iter_id = PrefixIteratorId::new(iter_id);
     if let Some((key, val, gas)) = iterators.next(iter_id) {
@@ -1217,11 +1256,14 @@ fn vp_storage_iter_pre_next_varlen<DB: storage::DB>(
 ///
 /// Returns [`-1`] when the key is not present, or the length of the data when
 /// the key is present (the length may be [`0`]).
-fn vp_storage_iter_post_next_varlen<DB: storage::DB>(
+fn vp_storage_iter_post_next_varlen<DB>(
     env: &VpEnv<DB>,
     iter_id: u64,
     result_ptr: u64,
-) -> i64 {
+) -> i64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     log::debug!(
         "vp_storage_iter_post_next_varlen iter_id {}, result_ptr {}",
         iter_id,
@@ -1229,7 +1271,7 @@ fn vp_storage_iter_post_next_varlen<DB: storage::DB>(
     );
 
     let write_log: &WriteLog = unsafe { &*(env.write_log.get()) };
-    let iterators: &mut PrefixIterators =
+    let iterators: &mut PrefixIterators<DB> =
         unsafe { &mut *(env.iterators.get()) };
     let iter_id = PrefixIteratorId::new(iter_id);
     while let Some((key, val, iter_gas)) = iterators.next(iter_id) {
@@ -1282,11 +1324,10 @@ fn vp_storage_iter_post_next_varlen<DB: storage::DB>(
 }
 
 /// Verifier insertion function exposed to the wasm VM Tx environment.
-fn tx_insert_verifier<DB: storage::DB>(
-    env: &TxEnv<DB>,
-    addr_ptr: u64,
-    addr_len: u64,
-) {
+fn tx_insert_verifier<DB>(env: &TxEnv<DB>, addr_ptr: u64, addr_len: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (addr, gas) = env
         .memory
         .read_string(addr_ptr, addr_len as _)
@@ -1305,13 +1346,15 @@ fn tx_insert_verifier<DB: storage::DB>(
 }
 
 /// Update a validity predicate function exposed to the wasm VM Tx environment
-fn tx_update_validity_predicate<DB: storage::DB>(
+fn tx_update_validity_predicate<DB>(
     env: &TxEnv<DB>,
     addr_ptr: u64,
     addr_len: u64,
     code_ptr: u64,
     code_len: u64,
-) {
+) where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (addr, gas) = env
         .memory
         .read_string(addr_ptr, addr_len as _)
@@ -1341,13 +1384,15 @@ fn tx_update_validity_predicate<DB: storage::DB>(
 
 /// Try to initialize a new account with a given address. The action must be
 /// authorized by the parent address.
-fn tx_init_account<DB: storage::DB>(
+fn tx_init_account<DB>(
     env: &TxEnv<DB>,
     addr_ptr: u64,
     addr_len: u64,
     code_ptr: u64,
     code_len: u64,
-) {
+) where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (addr, gas) = env
         .memory
         .read_string(addr_ptr, addr_len as _)
@@ -1392,7 +1437,10 @@ fn tx_init_account<DB: storage::DB>(
 }
 
 /// Getting the chain ID function exposed to the wasm VM Tx environment.
-fn tx_get_chain_id<DB: storage::DB>(env: &TxEnv<DB>, result_ptr: u64) {
+fn tx_get_chain_id<DB>(env: &TxEnv<DB>, result_ptr: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (chain_id, gas) = storage.get_chain_id();
     tx_add_gas(env, gas);
@@ -1406,7 +1454,10 @@ fn tx_get_chain_id<DB: storage::DB>(env: &TxEnv<DB>, result_ptr: u64) {
 /// Getting the block height function exposed to the wasm VM Tx
 /// environment. The height is that of the block to which the current
 /// transaction is being applied.
-fn tx_get_block_height<DB: storage::DB>(env: &TxEnv<DB>) -> u64 {
+fn tx_get_block_height<DB>(env: &TxEnv<DB>) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (height, gas) = storage.get_block_height();
     tx_add_gas(env, gas);
@@ -1415,7 +1466,10 @@ fn tx_get_block_height<DB: storage::DB>(env: &TxEnv<DB>) -> u64 {
 
 /// Getting the block hash function exposed to the wasm VM Tx environment. The
 /// hash is that of the block to which the current transaction is being applied.
-fn tx_get_block_hash<DB: storage::DB>(env: &TxEnv<DB>, result_ptr: u64) {
+fn tx_get_block_hash<DB>(env: &TxEnv<DB>, result_ptr: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (hash, gas) = storage.get_block_hash();
     tx_add_gas(env, gas);
@@ -1427,7 +1481,10 @@ fn tx_get_block_hash<DB: storage::DB>(env: &TxEnv<DB>, result_ptr: u64) {
 }
 
 /// Getting the chain ID function exposed to the wasm VM VP environment.
-fn vp_get_chain_id<DB: storage::DB>(env: &VpEnv<DB>, result_ptr: u64) {
+fn vp_get_chain_id<DB>(env: &VpEnv<DB>, result_ptr: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (chain_id, gas) = storage.get_chain_id();
     vp_add_gas(env, gas);
@@ -1441,7 +1498,10 @@ fn vp_get_chain_id<DB: storage::DB>(env: &VpEnv<DB>, result_ptr: u64) {
 /// Getting the block height function exposed to the wasm VM VP
 /// environment. The height is that of the block to which the current
 /// transaction is being applied.
-fn vp_get_block_height<DB: storage::DB>(env: &VpEnv<DB>) -> u64 {
+fn vp_get_block_height<DB>(env: &VpEnv<DB>) -> u64
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (height, gas) = storage.get_block_height();
     vp_add_gas(env, gas);
@@ -1450,7 +1510,10 @@ fn vp_get_block_height<DB: storage::DB>(env: &VpEnv<DB>) -> u64 {
 
 /// Getting the block hash function exposed to the wasm VM VP environment. The
 /// hash is that of the block to which the current transaction is being applied.
-fn vp_get_block_hash<DB: storage::DB>(env: &VpEnv<DB>, result_ptr: u64) {
+fn vp_get_block_hash<DB>(env: &VpEnv<DB>, result_ptr: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (hash, gas) = storage.get_block_hash();
     vp_add_gas(env, gas);
@@ -1463,7 +1526,10 @@ fn vp_get_block_hash<DB: storage::DB>(env: &VpEnv<DB>, result_ptr: u64) {
 
 /// Log a string from exposed to the wasm VM Tx environment. The message will be
 /// printed at the [`log::Level::Info`]. This function is for development only.
-fn tx_log_string<DB: storage::DB>(env: &TxEnv<DB>, str_ptr: u64, str_len: u64) {
+fn tx_log_string<DB>(env: &TxEnv<DB>, str_ptr: u64, str_len: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (str, _gas) = env
         .memory
         .read_string(str_ptr, str_len as _)
@@ -1474,7 +1540,10 @@ fn tx_log_string<DB: storage::DB>(env: &TxEnv<DB>, str_ptr: u64, str_len: u64) {
 
 /// Log a string from exposed to the wasm VM VP environment. The message will be
 /// printed at the [`log::Level::Info`]. This function is for development only.
-fn vp_log_string<DB: storage::DB>(env: &VpEnv<DB>, str_ptr: u64, str_len: u64) {
+fn vp_log_string<DB>(env: &VpEnv<DB>, str_ptr: u64, str_len: u64)
+where
+    DB: storage::DB + for<'iter> storage::DBIter<'iter>,
+{
     let (str, _gas) = env
         .memory
         .read_string(str_ptr, str_len as _)

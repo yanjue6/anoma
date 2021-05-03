@@ -70,7 +70,7 @@ pub trait DB: std::fmt::Debug {
 }
 
 pub trait DBIter<'iter>: std::fmt::Debug {
-    type PrefixIter;
+    type PrefixIter: Iterator<Item = (String, Vec<u8>, u64)>;
 
     /// Read key value pairs with the given prefix from the DB
     fn iter_prefix(

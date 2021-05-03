@@ -1,14 +1,19 @@
 use std::collections::HashMap;
 
-use crate::shell::storage::PersistentPrefixIterator;
+use crate::shell::storage::DBIter;
 
-// TODO make this generic over the Iterator type
-pub struct PrefixIterators<'a> {
+pub struct PrefixIterators<'iter, DB>
+where
+    DB: DBIter<'iter>,
+{
     index: PrefixIteratorId,
-    iterators: HashMap<PrefixIteratorId, PersistentPrefixIterator<'a>>,
+    iterators: HashMap<PrefixIteratorId, <DB as DBIter<'iter>>::PrefixIter>,
 }
 
-impl<'a> PrefixIterators<'a> {
+impl<'iter, DB> PrefixIterators<'iter, DB>
+where
+    DB: DBIter<'iter>,
+{
     pub fn new() -> Self {
         PrefixIterators {
             index: PrefixIteratorId::new(0),
@@ -18,7 +23,7 @@ impl<'a> PrefixIterators<'a> {
 
     pub fn insert(
         &mut self,
-        iter: PersistentPrefixIterator<'a>,
+        iter: <DB as DBIter<'iter>>::PrefixIter,
     ) -> PrefixIteratorId {
         let id = self.index;
         self.iterators.insert(id, iter);
@@ -26,11 +31,10 @@ impl<'a> PrefixIterators<'a> {
         id
     }
 
-    /// Returns a key-value pair and the gas cost
     pub fn next(
         &mut self,
         id: PrefixIteratorId,
-    ) -> Option<(String, Vec<u8>, u64)> {
+    ) -> Option<<<DB as DBIter<'iter>>::PrefixIter as Iterator>::Item> {
         match self.iterators.get_mut(&id) {
             Some(iter) => iter.next(),
             None => None,

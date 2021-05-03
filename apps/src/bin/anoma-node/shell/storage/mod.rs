@@ -1,7 +1,7 @@
 //! The storage module handles both the current state in-memory and the stored
 //! state in DB.
 
-mod db;
+pub(crate) mod db;
 mod types;
 
 use std::collections::HashMap;
@@ -11,8 +11,7 @@ use std::path::Path;
 use anoma_shared::types::{
     Address, BlockHash, BlockHeight, Key, BLOCK_HASH_LENGTH, CHAIN_ID_LENGTH,
 };
-pub use db::DBIter;
-pub use db::DB;
+pub use db::{DBIter, DB};
 use sparse_merkle_tree::H256;
 use thiserror::Error;
 use types::MerkleTree;
@@ -41,7 +40,7 @@ const MIN_STORAGE_GAS: u64 = 1;
 #[derive(Debug)]
 pub struct Storage<DB>
 where
-    DB: db::DB,
+    DB: db::DB + for<'iter> DBIter<'iter>,
 {
     db: DB,
     chain_id: String,
@@ -100,7 +99,7 @@ where
 
 impl<DB> Storage<DB>
 where
-    DB: db::DB,
+    DB: db::DB + for<'iter> db::DBIter<'iter>,
 {
     /// Load the full state at the last committed height, if any. Returns the
     /// Merkle root hash and the height of the committed block.

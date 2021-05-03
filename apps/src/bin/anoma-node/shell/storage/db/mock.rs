@@ -194,8 +194,8 @@ impl<'iter> DBIter<'iter> for MockDB {
     }
 }
 
-struct MockIterator<'a> {
-    iter: Range<'a, String, Vec<u8>>,
+pub struct MockIterator<'a> {
+    pub iter: Range<'a, String, Vec<u8>>,
 }
 
 pub type MockPrefixIterator<'a> = PrefixIterator<MockIterator<'a>>;
