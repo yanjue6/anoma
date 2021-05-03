@@ -145,7 +145,7 @@ impl TxRunner {
         Self { wasm_store }
     }
 
-    pub fn run<DB: 'static + storage::DB>(
+    pub fn run<DB>(
         &self,
         storage: &Storage<DB>,
         write_log: &mut WriteLog,
@@ -153,7 +153,15 @@ impl TxRunner {
         gas_meter: &mut BlockGasMeter,
         tx_code: Vec<u8>,
         tx_data: Vec<u8>,
-    ) -> Result<()> {
+    ) -> Result<()>
+    where
+        DB: 'static
+            + storage::DB
+            + for<'iter> storage::DBIter<
+                'iter,
+                // PrefixIter = storage::PersistentPrefixIterator<'iter>,
+            >,
+    {
         validate_wasm(&tx_code)?;
 
         // This is not thread-safe, we're assuming single-threaded Tx runner.
@@ -250,7 +258,7 @@ impl VpRunner {
 
     // TODO consider using a wrapper object for all the host env references
     #[allow(clippy::too_many_arguments)]
-    pub fn run<DB: 'static + storage::DB>(
+    pub fn run<DB>(
         &self,
         vp_code: impl AsRef<[u8]>,
         tx_data: Vec<u8>,
@@ -260,7 +268,15 @@ impl VpRunner {
         vp_gas_meter: &mut VpGasMeter,
         keys_changed: Vec<Key>,
         verifiers: HashSet<Address>,
-    ) -> Result<bool> {
+    ) -> Result<bool>
+    where
+        DB: 'static
+            + storage::DB
+            + for<'iter> storage::DBIter<
+                'iter,
+                PrefixIter = storage::PersistentPrefixIterator<'iter>,
+            >,
+    {
         validate_wasm(vp_code.as_ref())?;
 
         // Read-only access from parallel Vp runners

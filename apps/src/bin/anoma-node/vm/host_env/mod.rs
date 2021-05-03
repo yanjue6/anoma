@@ -133,7 +133,7 @@ impl WasmerEnv for FilterEnv {
 
 /// Prepare imports (memory and host functions) exposed to the vm guest running
 /// transaction code
-pub fn prepare_tx_imports<DB: 'static + storage::DB>(
+pub fn prepare_tx_imports<DB>(
     wasm_store: &Store,
     storage: EnvHostWrapper<Storage<DB>>,
     write_log: MutEnvHostWrapper<WriteLog>,
@@ -141,7 +141,15 @@ pub fn prepare_tx_imports<DB: 'static + storage::DB>(
     verifiers: MutEnvHostWrapper<HashSet<Address>>,
     gas_meter: MutEnvHostWrapper<BlockGasMeter>,
     initial_memory: Memory,
-) -> ImportObject {
+) -> ImportObject
+where
+    DB: 'static
+        + storage::DB
+        + for<'iter> storage::DBIter<
+            'iter,
+            // PrefixIter = storage::PersistentPrefixIterator<'iter>,
+        >,
+{
     let env = TxEnv {
         storage,
         write_log,
@@ -176,7 +184,7 @@ pub fn prepare_tx_imports<DB: 'static + storage::DB>(
 
 /// Prepare imports (memory and host functions) exposed to the vm guest running
 /// validity predicate code
-pub fn prepare_vp_imports<DB: 'static + storage::DB>(
+pub fn prepare_vp_imports<DB>(
     wasm_store: &Store,
     addr: Address,
     storage: EnvHostWrapper<Storage<DB>>,
@@ -184,7 +192,15 @@ pub fn prepare_vp_imports<DB: 'static + storage::DB>(
     iterators: MutEnvHostWrapper<PrefixIterators<'static>>,
     gas_meter: MutEnvHostWrapper<VpGasMeter>,
     initial_memory: Memory,
-) -> ImportObject {
+) -> ImportObject
+where
+    DB: 'static
+        + storage::DB
+        + for<'iter> storage::DBIter<
+            'iter,
+            PrefixIter = storage::PersistentPrefixIterator<'iter>,
+        >,
+{
     let env = VpEnv {
         addr,
         storage,
@@ -405,7 +421,11 @@ fn tx_storage_has_key<DB: storage::DB>(
             let (present, gas) =
                 storage.has_key(&key).expect("storage has_key failed");
             tx_add_gas(env, gas);
-            if present { 1 } else { 0 }
+            if present {
+                1
+            } else {
+                0
+            }
         }
     }
 }
@@ -495,11 +515,18 @@ fn tx_storage_read_varlen<DB: storage::DB>(
 /// Storage prefix iterator function exposed to the wasm VM Tx environment.
 /// It will try to get an iterator from the storage and return the corresponding
 /// ID of the interator.
-fn tx_storage_iter_prefix<DB: storage::DB>(
+fn tx_storage_iter_prefix<DB>(
     env: &TxEnv<DB>,
     prefix_ptr: u64,
     prefix_len: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB
+        + for<'iter> storage::DBIter<
+            'iter,
+            // PrefixIter = storage::PersistentPrefixIterator<'iter>,
+        >,
+{
     let (prefix, gas) = env
         .memory
         .read_string(prefix_ptr, prefix_len as _)
@@ -969,7 +996,11 @@ fn vp_storage_has_key_pre<DB: storage::DB>(
     let storage: &Storage<DB> = unsafe { &*(env.storage.get()) };
     let (present, gas) = storage.has_key(&key).expect("storage has_key failed");
     vp_add_gas(env, gas);
-    if present { 1 } else { 0 }
+    if present {
+        1
+    } else {
+        0
+    }
 }
 
 /// Storage `has_key` in posterior state (after tx execution) function exposed
@@ -1007,7 +1038,11 @@ fn vp_storage_has_key_post<DB: storage::DB>(
             let (present, gas) =
                 storage.has_key(&key).expect("storage has_key failed");
             vp_add_gas(env, gas);
-            if present { 1 } else { 0 }
+            if present {
+                1
+            } else {
+                0
+            }
         }
     }
 }
@@ -1015,11 +1050,18 @@ fn vp_storage_has_key_post<DB: storage::DB>(
 /// Storage prefix iterator function exposed to the wasm VM VP environment.
 /// It will try to get an iterator from the storage and return the corresponding
 /// ID of the interator.
-fn vp_storage_iter_prefix<DB: storage::DB>(
+fn vp_storage_iter_prefix<DB>(
     env: &VpEnv<DB>,
     prefix_ptr: u64,
     prefix_len: u64,
-) -> u64 {
+) -> u64
+where
+    DB: storage::DB
+        + for<'iter> storage::DBIter<
+            'iter,
+            PrefixIter = storage::PersistentPrefixIterator<'iter>,
+        >,
+{
     let (prefix, gas) = env
         .memory
         .read_string(prefix_ptr, prefix_len as _)

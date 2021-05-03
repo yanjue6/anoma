@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use anoma_shared::types::{BlockHash, BlockHeight, Key};
 use thiserror::Error;
 
-use super::types::{MerkleTree, PrefixIterator};
+use super::types::MerkleTree;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -65,9 +65,17 @@ pub trait DB: std::fmt::Debug {
     /// Read the value with the given height and the key from the DB
     fn read(&self, height: BlockHeight, key: &Key) -> Result<Option<Vec<u8>>>;
 
-    /// Read key value pairs with the given prefix from the DB
-    fn iter_prefix(&self, height: BlockHeight, prefix: &Key) -> PrefixIterator;
-
     /// Read the last committed block
     fn read_last_block(&mut self) -> Result<Option<BlockState>>;
+}
+
+pub trait DBIter<'iter>: std::fmt::Debug {
+    type PrefixIter;
+
+    /// Read key value pairs with the given prefix from the DB
+    fn iter_prefix(
+        &'iter self,
+        height: BlockHeight,
+        prefix: &Key,
+    ) -> Self::PrefixIter;
 }

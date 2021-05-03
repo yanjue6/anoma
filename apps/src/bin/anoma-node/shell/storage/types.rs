@@ -131,24 +131,23 @@ fn new_blake2b() -> Blake2b {
 
 pub type KVBytes = (Box<[u8]>, Box<[u8]>);
 
-pub struct PrefixIterator<'a> {
-    iter: Box<dyn Iterator<Item = KVBytes> + 'a>,
-    db_prefix: String,
+pub type PersistentPrefixIterator<'a> = PrefixIterator<rocksdb::DBIterator<'a>>;
+
+pub struct PrefixIterator<I> {
+    pub iter: I,
+    pub db_prefix: String,
 }
 
-impl<'a> PrefixIterator<'a> {
-    pub fn new<T>(iter: T, db_prefix: String) -> Self
+impl<I> PrefixIterator<I> {
+    pub fn new(iter: I, db_prefix: String) -> Self
     where
-        T: Iterator<Item = KVBytes> + 'a,
+        I: Iterator<Item = KVBytes>,
     {
-        PrefixIterator {
-            iter: Box::new(iter),
-            db_prefix,
-        }
+        PrefixIterator { iter, db_prefix }
     }
 }
 
-impl<'a> Iterator for PrefixIterator<'a> {
+impl<'a> Iterator for PrefixIterator<rocksdb::DBIterator<'a>> {
     type Item = (String, Vec<u8>, u64);
 
     /// Returns the next pair and the gas cost
@@ -170,7 +169,7 @@ impl<'a> Iterator for PrefixIterator<'a> {
     }
 }
 
-impl<'a> std::fmt::Debug for PrefixIterator<'a> {
+impl<I> std::fmt::Debug for PrefixIterator<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("PrefixIterator")
     }

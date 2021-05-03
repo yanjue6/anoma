@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
-use crate::shell::storage::PrefixIterator;
+use crate::shell::storage::PersistentPrefixIterator;
 
+// TODO make this generic over the Iterator type
 pub struct PrefixIterators<'a> {
     index: PrefixIteratorId,
-    iterators: HashMap<PrefixIteratorId, PrefixIterator<'a>>,
+    iterators: HashMap<PrefixIteratorId, PersistentPrefixIterator<'a>>,
 }
 
 impl<'a> PrefixIterators<'a> {
@@ -15,7 +16,10 @@ impl<'a> PrefixIterators<'a> {
         }
     }
 
-    pub fn insert(&mut self, iter: PrefixIterator<'a>) -> PrefixIteratorId {
+    pub fn insert(
+        &mut self,
+        iter: PersistentPrefixIterator<'a>,
+    ) -> PrefixIteratorId {
         let id = self.index;
         self.iterators.insert(id, iter);
         self.index = id.next_id();

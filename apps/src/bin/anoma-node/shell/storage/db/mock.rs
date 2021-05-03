@@ -8,8 +8,10 @@ use anoma_shared::types::{BlockHash, BlockHeight, Key, KeySeg};
 use sparse_merkle_tree::default_store::DefaultStore;
 use sparse_merkle_tree::{SparseMerkleTree, H256};
 
-use super::super::types::{KVBytes, MerkleTree, PrefixIterator, Value};
+use super::super::types::{KVBytes, MerkleTree, Value};
 use super::{BlockState, Error, Result, DB};
+use crate::shell::storage::types::PrefixIterator;
+use crate::shell::storage::DBIter;
 
 #[derive(Debug)]
 pub struct MockDB(BTreeMap<String, Vec<u8>>);
@@ -93,20 +95,6 @@ impl DB for MockDB {
         }
     }
 
-    fn iter_prefix(&self, height: BlockHeight, prefix: &Key) -> PrefixIterator {
-        let db_prefix = format!("{}/subspace/", height.to_string());
-        let prefix = format!("{}{}", db_prefix, prefix.to_string());
-
-        let mut upper_prefix = prefix.clone().into_bytes();
-        if let Some(last) = upper_prefix.pop() {
-            upper_prefix.push(last + 1);
-        }
-        let upper =
-            String::from_utf8(upper_prefix).expect("failed convert to string");
-        let iter = self.0.range((Included(prefix), Excluded(upper)));
-        PrefixIterator::new(MockPrefixIterator { iter }, db_prefix)
-    }
-
     fn read_last_block(&mut self) -> Result<Option<BlockState>> {
         let chain_id;
         let height;
@@ -184,17 +172,63 @@ impl DB for MockDB {
     }
 }
 
-struct MockPrefixIterator<'a> {
+impl<'iter> DBIter<'iter> for MockDB {
+    type PrefixIter = MockPrefixIterator<'iter>;
+
+    fn iter_prefix(
+        &'iter self,
+        height: BlockHeight,
+        prefix: &Key,
+    ) -> MockPrefixIterator<'iter> {
+        let db_prefix = format!("{}/subspace/", height.to_string());
+        let prefix = format!("{}{}", db_prefix, prefix.to_string());
+
+        let mut upper_prefix = prefix.clone().into_bytes();
+        if let Some(last) = upper_prefix.pop() {
+            upper_prefix.push(last + 1);
+        }
+        let upper =
+            String::from_utf8(upper_prefix).expect("failed convert to string");
+        let iter = self.0.range((Included(prefix), Excluded(upper)));
+        MockPrefixIterator::new(MockIterator { iter }, db_prefix)
+    }
+}
+
+struct MockIterator<'a> {
     iter: Range<'a, String, Vec<u8>>,
 }
 
-impl<'a> Iterator for MockPrefixIterator<'a> {
+pub type MockPrefixIterator<'a> = PrefixIterator<MockIterator<'a>>;
+
+impl<'a> Iterator for MockIterator<'a> {
     type Item = KVBytes;
 
-    fn next(&mut self) -> Option<KVBytes> {
+    fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|(key, val)| {
             (Box::from(key.as_bytes()), Box::from(val.as_slice()))
         })
+    }
+}
+
+impl<'a> Iterator for PrefixIterator<MockIterator<'a>> {
+    type Item = (String, Vec<u8>, u64);
+
+    /// Returns the next pair and the gas cost
+    fn next(&mut self) -> Option<(String, Vec<u8>, u64)> {
+        match self.iter.next() {
+            Some((key, val)) => {
+                let key = String::from_utf8(key.to_vec())
+                    .expect("Cannot convert from bytes to key string");
+                match key.strip_prefix(&self.db_prefix) {
+                    Some(k) => {
+                        let gas = k.len() + val.len();
+                        Some((k.to_owned(), val.to_vec(), gas as _))
+                    }
+                    None => self.next(),
+                }
+            }
+            None => None,
+        }
     }
 }
 
