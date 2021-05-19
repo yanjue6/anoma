@@ -33,6 +33,7 @@ pub const CRAFT_INTENT_COMMAND: &str = "craft-intent";
 pub const TX_COMMAND: &str = "tx";
 pub const TX_TRANSFER_COMMAND: &str = "transfer";
 pub const TX_UPDATE_COMMAND: &str = "update";
+pub const BALANCES_COMMAND: &str = "balances";
 
 // gossip args
 pub const BASE_ARG: &str = "base-dir";
@@ -102,6 +103,7 @@ fn add_client_commands(app: App) -> App {
         .subcommand(client_intent_subcommand())
         .subcommand(client_craft_intent_subcommand())
         .subcommand(client_subscribe_topic_subcommand())
+        .subcommand(client_balance_subcommand())
 }
 
 pub fn anoma_node_cli() -> App {
@@ -351,6 +353,27 @@ fn client_tx_update_subcommand() -> App {
                 .takes_value(false)
                 .required(false)
                 .about("Dry run the transaction."),
+        )
+        .arg(
+            Arg::new(LEDGER_ADDRESS_ARG)
+                .long(LEDGER_ADDRESS_ARG)
+                .multiple(false)
+                .takes_value(true)
+                .required(false)
+                .default_value("127.0.0.1:26657")
+                .about("Address of a ledger node as host:port"),
+        )
+}
+
+fn client_balance_subcommand() -> App {
+    App::new(BALANCES_COMMAND)
+        .about("Show token balances for the given address")
+        .arg(
+            Arg::new(ADDRESS_ARG)
+                .long(ADDRESS_ARG)
+                .takes_value(true)
+                .required(true)
+                .about("The account's address."),
         )
         .arg(
             Arg::new(LEDGER_ADDRESS_ARG)

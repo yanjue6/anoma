@@ -91,6 +91,13 @@ pub async fn main() -> Result<()> {
             );
             Ok(())
         }
+        Some((cli::BALANCES_COMMAND, args)) => {
+            let addr = cli::parse_string_req(args, cli::ADDRESS_ARG);
+            let ledger_address =
+                cli::parse_string_req(args, cli::LEDGER_ADDRESS_ARG);
+            tx::balances(addr, ledger_address).await;
+            Ok(())
+        }
         _ => app.print_help().wrap_err("Can't display help."),
     }
 }

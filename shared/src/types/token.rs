@@ -1,5 +1,7 @@
 //! A basic fungible token
 
+use std::fmt::Display;
+
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -65,6 +67,13 @@ impl From<f64> for Amount {
         Self {
             micro: (decimal * 1_000_000.0).round() as u64,
         }
+    }
+}
+
+impl Display for Amount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO temporary hacky way to display this
+        write!(f, "{:.6}", self.micro as f64 / 1_000_000_f64)
     }
 }
 

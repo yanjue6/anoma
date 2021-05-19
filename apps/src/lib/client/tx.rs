@@ -124,3 +124,16 @@ async fn submit_tx(
         println!("{:#?}", response);
     }
 }
+
+pub async fn balances(addr: String, ledger_address: String) {
+    let address: tendermint::net::Address =
+        FromStr::from_str(&format!("tcp://{}", ledger_address)).unwrap();
+    let client = HttpClient::new(address).unwrap();
+    let path = FromStr::from_str("balances").unwrap();
+
+    let response = client
+        .abci_query(Some(path), addr.as_bytes(), None, false)
+        .await
+        .unwrap();
+    println!("{:#?}", response);
+}

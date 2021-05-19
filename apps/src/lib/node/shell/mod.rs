@@ -11,7 +11,7 @@ use anoma_shared::types::token::Amount;
 use anoma_shared::types::{
     address, key, token, Address, BlockHash, BlockHeight, Key,
 };
-use borsh::BorshSerialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use prost::Message;
 use thiserror::Error;
 
@@ -37,6 +37,8 @@ pub enum Error {
     TxDecodingError(prost::DecodeError),
     #[error("Error trying to apply a transaction: {0}")]
     TxError(protocol::Error),
+    #[error("Error in the query: {0}")]
+    AbciQueryError(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -314,7 +316,19 @@ impl Shell {
 
                         reply.send(result).map_err(|e| {
                             Error::AbciChannelSendError(format!(
-                                "ApplyTx {}",
+                                "AbciQuery {}",
+                                e
+                            ))
+                        })?
+                    } else if path == "balances" {
+                        let addr =
+                            String::from_utf8_lossy(&data[..]).into_owned();
+                        let result = self
+                            .find_balances(addr)
+                            .map_err(|e| format!("{}", e));
+                        reply.send(result).map_err(|e| {
+                            Error::AbciChannelSendError(format!(
+                                "AbciQuery {}",
                                 e
                             ))
                         })?
@@ -450,5 +464,28 @@ impl Shell {
             }
         }
         result
+    }
+
+    pub fn find_balances(&self, addr: String) -> Result<String> {
+        let user = Address::decode(addr)
+            .map_err(|e| Error::AbciQueryError(e.to_string()))?;
+        let xan = ("XAN", address::xan());
+        let btc = ("BTC", address::btc());
+        let eth = ("ETH", address::eth());
+        let xtz = ("XTZ", address::xtz());
+        let doge = ("DOGE", address::doge());
+        let tokens = vec![xan, btc, eth, xtz, doge];
+
+        let mut result = "".to_string();
+        for (name, token) in tokens.iter() {
+            let key = token::balance_key(&token, &user);
+            let balance = self.storage.read(&key);
+            if let Ok((Some(b), _)) = balance {
+                if let Ok(amount) = Amount::try_from_slice(&b[..]) {
+                    result = format!("{}: {}, {}", name, amount, result);
+                }
+            }
+        }
+        Ok(result)
     }
 }
