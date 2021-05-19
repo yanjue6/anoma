@@ -202,6 +202,49 @@ pub enum ImplicitAddress {
     Ed25519(key::ed25519::PublicKeyHash),
 }
 
+pub fn adrian() -> Address {
+    Address::decode("a1qq5qqqqqxgeyzdeng4zrw33sxez5y3p3xqerz3psx5e5x32rg3rryw2ygc6yy3p4xpq5gvfnw3nwp8").expect("The address decoding shouldn't fail")
+}
+pub fn alberto() -> Address {
+    Address::decode("a1qq5qqqqq8yerw3jxx565y333gfpnjwzygcc5zd6xxarr2dzzgcm5xv3kxazrjve589p5vv34vl0yy3").expect("The address decoding shouldn't fail")
+}
+pub fn ash() -> Address {
+    Address::decode("a1qq5qqqqqxue5vs69xc6nwvfcgdpyy3pnxv6rxw2zx3zryv33gyc5xdekxaryydehgvunsvzz2hjedu").expect("The address decoding shouldn't fail")
+}
+pub fn awa() -> Address {
+    Address::decode("a1qq5qqqqqg565zv34gcc52v3nxumr23z9gezrj3pnx56rwse4xc6yg3phgcun2d33xyenqv2x4xyw62").expect("The address decoding shouldn't fail")
+}
+pub fn celso() -> Address {
+    Address::decode("a1qq5qqqqq8qmrwsjyxcerqwzpx9pnzve3gvc5xw29gdqnvv2yx5mrvsjpxgcrxv6pg5engvf5hgjscj").expect("The address decoding shouldn't fail")
+}
+pub fn chris() -> Address {
+    Address::decode("a1qq5qqqqqgye5xwpcxqu5z3p4g5ens3zr8qm5xv69xfznvwzzx4p5xwpkxc6n2v6x8yc5gdpeezdqc4").expect("The address decoding shouldn't fail")
+}
+pub fn gabriella() -> Address {
+    Address::decode("a1qq5qqqqq8ycn2djrxqmnyd3sxcunsv2zgyeyvwzpgceyxdf3xyu5gv2pgeprxdfe8ycrzwzzkezpcp").expect("The address decoding shouldn't fail")
+}
+pub fn gianmarco() -> Address {
+    Address::decode("a1qq5qqqqq89prqsf38qcrzd6zxym5xdfjg4pyg3pjg3pyx32zg5u5y3jpgc65zdej8pznwwf3jqzsws").expect("The address decoding shouldn't fail")
+}
+pub fn joe() -> Address {
+    Address::decode("a1qq5qqqqqgvuyv335g9z5v32xgdz523zxgsuy23fjxazrjve5g4pnydphxyu5v33cxarrzd692045xh").expect("The address decoding shouldn't fail")
+}
+pub fn nat() -> Address {
+    Address::decode("a1qq5qqqqq89rygsejx9q5yd6pxpp5x3f38ymyydp3xcu523zzx4prw3fc8qu5vvjpxyeyydpnfha6qt").expect("The address decoding shouldn't fail")
+}
+pub fn simon() -> Address {
+    Address::decode("a1qq5qqqqqgfqnqdecxcurq33hxcey2sf4g5mygdjyxfrrjse4xyc52vpjxyenwve4gv6njsecz4tzen").expect("The address decoding shouldn't fail")
+}
+pub fn sylvain() -> Address {
+    Address::decode("a1qq5qqqqqgccnyvp3gyergvp5xgmr2s3s8yung3f4gdq52wzpxvurysfhgycnwd29xfryxvekfwc00t").expect("The address decoding shouldn't fail")
+}
+pub fn tomas() -> Address {
+    Address::decode("a1qq5qqqqqggcrzsfj8ym5g3psxuurxv2yxseyxwpsxdpy2s35gsc5zdzpx9pyxde48ppnqd3cnzlava").expect("The address decoding shouldn't fail")
+}
+pub fn yuji() -> Address {
+    Address::decode("a1qq5qqqqqgvcrz3f5x4prssj9x5enydecxfznzdj9g5cnj3fcxarrxdjpx5cnwv69xye5vvfeva4z85").expect("The address decoding shouldn't fail")
+}
+
 /// Temporary helper for testing
 pub fn xan() -> Address {
     Address::decode("a1qq5qqqqqxuc5gvz9gycryv3sgye5v3j9gvurjv34g9prsd6x8qu5xs2ygdzrzsf38q6rss33xf42f3").expect("The token address decoding shouldn't fail")
@@ -213,8 +256,18 @@ pub fn btc() -> Address {
 }
 
 /// Temporary helper for testing
+pub fn eth() -> Address {
+    Address::decode("a1qq5qqqqqxeryzvjxxsmrj3jpxapygve58qerwsfjxaznvd3n8qenyv2ygsc52335xue5vve5m66gfm").expect("The token address decoding shouldn't fail")
+}
+
+/// Temporary helper for testing
 pub fn xtz() -> Address {
     Address::decode("a1qq5qqqqqx3z5xd3ngdqnzwzrgfpnxd3hgsuyx3phgfry2s3kxsc5xves8qe5x33sgdprzvjptzfry9").expect("The token address decoding shouldn't fail")
+}
+
+/// Temporary helper for testing
+pub fn doge() -> Address {
+    Address::decode("a1qq5qqqqqx9rrq3zrg5myzv3eg9zyxvf3gery2dfhgg6nsdjrxscrgv6rgsunx33sxg6nvdjrkujezz").expect("The token address decoding shouldn't fail")
 }
 
 /// Temporary helper for testing
@@ -254,8 +307,10 @@ pub mod tests {
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<String>>()
             .join("");
-        let address = key_gen.generate_address(rng_source);
-        println!("address {}", address);
+        for _ in 0..13 {
+            let address = key_gen.generate_address(rng_source.clone());
+            println!("address {}", address);
+        }
     }
 
     /// A sampled established address for tests
