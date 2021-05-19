@@ -6,7 +6,12 @@ network = "mainnet"
 
 [intent_broadcaster]
 address = "/ip4/0.0.0.0/tcp/20201"
-peers = []
+peers = [
+    "/ip4/52.210.23.30/tcp/20201",
+    "/ip4/63.34.55.152/tcp/20201",
+    "/ip4/54.195.72.213/tcp/20201",
+    "/ip4/79.125.112.218/tcp/20201"
+]
 topics = ["asset_v0"]
 subscription_filter = "asset_v\\d{1,2}"
 
