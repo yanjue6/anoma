@@ -7,7 +7,7 @@ use thiserror::Error;
 use tokio::sync::mpsc::Receiver;
 
 use super::network_behaviour::Behaviour;
-use crate::proto::services::{rpc_message, RpcResponse};
+use crate::{gossiper::Gossiper, proto::services::{rpc_message, RpcResponse}};
 use crate::proto::types::{
     intent_broadcaster_message, IntentBroadcasterMessage,
 };
@@ -36,7 +36,7 @@ impl P2P {
     pub fn new(
         config: &crate::config::IntentBroadcaster,
     ) -> Result<(Self, Option<Receiver<MatchmakerMessage>>)> {
-        let local_key: Keypair = Ed25519(config.gossiper.key.clone());
+        let local_key: Keypair = Ed25519(Gossiper::new().key);
         let local_peer_id: PeerId = PeerId::from(local_key.public());
 
         let transport = {
