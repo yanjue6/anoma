@@ -76,10 +76,10 @@ pub fn run(sender: AbciSender, config: config::Ledger) {
     let home_dir = config.tendermint;
     let home_dir_string = home_dir.to_string_lossy().to_string();
     // init and run a Tendermint node child process
-    // Command::new("tendermint")
-    //     .args(&["init", "--home", &home_dir_string])
-    //     .output()
-    //     .expect("TEMPORARY: Failed to initialize tendermint node");
+    Command::new("tendermint")
+        .args(&["init", "--home", &home_dir_string])
+        .output()
+        .expect("TEMPORARY: Failed to initialize tendermint node");
     // if cfg!(feature = "dev") {
     //     // override the validator key file
     //     write_validator_key(home_dir, &genesis::genesis().validator)
