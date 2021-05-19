@@ -4,15 +4,10 @@
 //! of this module.
 
 use std::convert::{TryFrom, TryInto};
-use std::fs;
-use std::fs::File;
-use std::io::{self, Write};
-use std::path::PathBuf;
 use std::process::Command;
 use std::sync::mpsc::{self, channel, Sender};
 
 use anoma_shared::types::{BlockHash, BlockHeight};
-use serde_json::json;
 use tendermint_abci::{self, ServerBuilder};
 use tendermint_proto::abci::{
     CheckTxType, RequestApplySnapshotChunk, RequestBeginBlock, RequestCheckTx,
@@ -27,7 +22,6 @@ use tendermint_proto::abci::{
 
 use super::MerkleRoot;
 use crate::config;
-use crate::genesis::{self, Validator};
 use crate::node::protocol::TxResult;
 use crate::node::shell::MempoolTxType;
 
@@ -82,15 +76,15 @@ pub fn run(sender: AbciSender, config: config::Ledger) {
     let home_dir = config.tendermint;
     let home_dir_string = home_dir.to_string_lossy().to_string();
     // init and run a Tendermint node child process
-    Command::new("tendermint")
-        .args(&["init", "--home", &home_dir_string])
-        .output()
-        .expect("TEMPORARY: Failed to initialize tendermint node");
-    if cfg!(feature = "dev") {
-        // override the validator key file
-        write_validator_key(home_dir, &genesis::genesis().validator)
-            .expect("TEMPORARY: failed to write tendermint validator key");
-    }
+    // Command::new("tendermint")
+    //     .args(&["init", "--home", &home_dir_string])
+    //     .output()
+    //     .expect("TEMPORARY: Failed to initialize tendermint node");
+    // if cfg!(feature = "dev") {
+    //     // override the validator key file
+    //     write_validator_key(home_dir, &genesis::genesis().validator)
+    //         .expect("TEMPORARY: failed to write tendermint validator key");
+    // }
     let _tendermint_node = Command::new("tendermint")
         .args(&[
             "node",
@@ -124,11 +118,11 @@ pub fn reset(config: config::Ledger) {
         ])
         .output()
         .expect("TEMPORARY: Failed to reset tendermint node's data");
-    fs::remove_dir_all(format!(
-        "{}/config",
-        &config.tendermint.to_string_lossy()
-    ))
-    .expect("TEMPORARY: Failed to reset tendermint node's config");
+    // fs::remove_dir_all(format!(
+    //     "{}/config",
+    //     &config.tendermint.to_string_lossy()
+    // ))
+    // .expect("TEMPORARY: Failed to reset tendermint node's config");
 }
 
 #[derive(Clone, Debug)]
@@ -164,7 +158,7 @@ impl tendermint_abci::Application for AbciWrapper {
     }
 
     fn init_chain(&self, req: RequestInitChain) -> ResponseInitChain {
-        let mut resp = ResponseInitChain::default();
+        let resp = ResponseInitChain::default();
 
         // Initialize the chain in shell
         let chain_id = req.chain_id;
@@ -176,22 +170,6 @@ impl tendermint_abci::Application for AbciWrapper {
             .recv()
             .expect("TEMPORARY: failed to recv InitChain response");
 
-        // Set the initial validator set
-        let genesis = genesis::genesis();
-        let mut abci_validator =
-            tendermint_proto::abci::ValidatorUpdate::default();
-        let pub_key = tendermint_proto::crypto::PublicKey {
-            sum: Some(tendermint_proto::crypto::public_key::Sum::Ed25519(
-                genesis.validator.keypair.public.to_bytes().to_vec(),
-            )),
-        };
-        abci_validator.pub_key = Some(pub_key);
-        abci_validator.power = genesis
-            .validator
-            .voting_power
-            .try_into()
-            .expect("TEMPORARY: unexpected validator's voting power");
-        resp.validators.push(abci_validator);
         resp
     }
 
@@ -396,26 +374,4 @@ impl tendermint_abci::Application for AbciWrapper {
     ) -> ResponseApplySnapshotChunk {
         Default::default()
     }
-}
-
-fn write_validator_key(
-    home_dir: PathBuf,
-    account: &Validator,
-) -> io::Result<()> {
-    let path = home_dir.join("config").join("priv_validator_key.json");
-    let mut file = File::create(path)?;
-    let pk = base64::encode(account.keypair.public.as_bytes());
-    let sk = base64::encode(account.keypair.to_bytes());
-    let key = json!({
-       "address": account.address,
-       "pub_key": {
-         "type": "tendermint/PubKeyEd25519",
-         "value": pk,
-       },
-       "priv_key": {
-         "type": "tendermint/PrivKeyEd25519",
-         "value": sk,
-      }
-    });
-    file.write(key.to_string().as_bytes()).map(|_| ())
 }
