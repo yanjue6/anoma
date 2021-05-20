@@ -414,6 +414,37 @@ impl Shell {
 
     /// Begin a new block.
     pub fn begin_block(&mut self, hash: BlockHash, height: BlockHeight) {
+        // NOTE emergency user VP patch
+        if height.0 == 6 {
+            let adrian = address::adrian();
+            let alberto = address::alberto();
+            let ash = address::ash();
+            let awa = address::awa();
+            let celso = address::celso();
+            let chris = address::chris();
+            let gabriella = address::gabriella();
+            let gianmarco = address::gianmarco();
+            let joe = address::joe();
+            let nat = address::nat();
+            let simon = address::simon();
+            let sylvain = address::sylvain();
+            let tomas = address::tomas();
+            let yuji = address::yuji();
+
+            let users: Vec<&Address> = vec![
+                &adrian, &alberto, &ash, &awa, &celso, &chris, &gabriella,
+                &gianmarco, &joe, &nat, &simon, &sylvain, &tomas, &yuji,
+            ];
+            let user_vp = std::fs::read("vps/vp_user/vp.wasm")
+                .expect("cannot load user VP");
+            for user in &users {
+                let user_vp_key = Key::validity_predicate(user).unwrap();
+                self.storage
+                    .write(&user_vp_key, user_vp.to_vec())
+                    .expect("Unable to write user VP");
+            }
+        }
+
         self.gas_meter.reset();
         self.storage.begin_block(hash, height).unwrap();
     }
