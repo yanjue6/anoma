@@ -18,7 +18,7 @@ Download the release for your platform from <https://github.com/heliaxdev/anoma-
 
 ```shell
 # Extract the archive
-tar -xf anoma_0.1_darwin_amd64.tar.gz
+tar -xf anoma_0.1a_darwin_amd64.tar.gz
 
 cd anoma
 
@@ -40,7 +40,7 @@ git clone git@github.com:heliaxdev/anoma-prototype.git
 cd anoma-prototype
 
 # Checkout the release branch
-git checkout v0.1-playnet
+git checkout v0.1a-playnet
 
 # Build and link the executables
 make install
