@@ -91,8 +91,9 @@ impl Shell {
 
         let token_vp = std::fs::read("vps/vp_token/vp.wasm")
             .expect("cannot load token VP");
-        let user_vp =
-            std::fs::read("vps/vp_user/vp.wasm").expect("cannot load user VP");
+        // NOTE unpatched user VP to start with
+        let user_vp = std::fs::read("vps/vp_user/vp-bad.wasm")
+            .expect("cannot load user VP");
 
         // TODO load initial accounts from genesis
 
