@@ -88,8 +88,8 @@ validity_predicate! {
                         valid_sig
                     },
                 KeyType::Unknown => {
-                    log_string("Unknown key modified");
-                    false
+                    log_string("Unknown key modified, valid sig {}", valid_sig);
+                    valid_sig
                 }
             };
             if !is_valid{
