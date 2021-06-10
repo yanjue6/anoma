@@ -22,6 +22,7 @@
     - [Storage](./explore/design/storage.md)
       - [Data schema](./explore/design/data-schema.md)
     - [Actors](./explore/design/actors.md)
+    - [IBC integration](./explore/design/ibc.md)
   - [Prototypes](./explore/prototypes/README.md)
     - [Base ledger](./explore/prototypes/base-ledger.md)
     - [Gossip layer](./explore/prototypes/gossip-layer.md)
