@@ -1,10 +1,10 @@
-use std::convert::TryInto;
+use std::convert::{TryInto};
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::io::{ErrorKind, Write};
 
 use borsh::{BorshDeserialize, BorshSerialize};
-pub use libsecp256k1::SecretKey;
+pub use libsecp256k1:: SecretKey;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use thiserror::Error;
@@ -16,7 +16,9 @@ const SIGNATURE_LEN: usize = 64;
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey(libsecp256k1::PublicKey);
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+// serde struggled with serializing/deserializing the wrapped type
+//#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Signature(libsecp256k1::Signature);
 
 #[derive(
@@ -60,54 +62,66 @@ pub fn is_pk_key(key: &Key) -> Option<&Address> {
 
 /// Sign the data with a key.
 pub fn sign(keypair: &Keypair, data: impl AsRef<[u8]>) -> Signature {
-    Signature(keypair.sign(&data.as_ref()))
+    let message_to_sign = libsecp256k1::Message::parse_slice(&data.as_ref())
+        .expect("Message encoding shouldn't fail");
+    Signature(libsecp256k1::sign(&message_to_sign, &keypair.1).0)
 }
 
 #[derive(Error, Debug)]
 pub enum VerifySigError {
     #[error("Signature verification failed: {0}")]
-    SigError(SignatureError),
+    SigError(libsecp256k1::Error),
     #[error("Signature verification failed to encode the data: {0}")]
     EncodingError(std::io::Error),
 }
 
 /// Check that the public key matches the signature on the given data.
 pub fn verify_signature<T: BorshSerialize + BorshDeserialize>(
-    pk: &PublicKey,
+    pk: &libsecp256k1::PublicKey,
     data: &T,
-    sig: &Signature,
+    sig: &libsecp256k1::Signature,
 ) -> Result<(), VerifySigError> {
-    let bytes = data.try_to_vec().map_err(VerifySigError::EncodingError)?;
-    pk.0.verify_strict(&bytes, &sig.0)
-        .map_err(VerifySigError::SigError)
+    let bytes = &data.try_to_vec().map_err(VerifySigError::EncodingError)?[..];
+    let message = &libsecp256k1::Message::parse_slice(bytes).expect("Error parsing given data");
+    let check = libsecp256k1::verify(message, sig, pk);
+    match check {
+        true => Ok(()),
+        false => Err(VerifySigError::SigError(libsecp256k1::Error::InvalidSignature))
+    }
 }
 
 /// Check that the public key matches the signature on the given raw data.
 pub fn verify_signature_raw(
-    pk: &PublicKey,
+    pk: &libsecp256k1::PublicKey,
     data: &[u8],
-    sig: &Signature,
+    sig: &libsecp256k1::Signature,
 ) -> Result<(), VerifySigError> {
-    pk.0.verify_strict(data, &sig.0)
-        .map_err(VerifySigError::SigError)
+    let message = &libsecp256k1::Message::parse_slice(data)
+        .expect("Error parsing raw data");
+    let check = libsecp256k1::verify(message, sig, pk);
+    match check {
+        true => Ok(()),
+        false => Err(VerifySigError::SigError(libsecp256k1::Error::InvalidSignature))
+    }
+        //.map_err(VerifySigError::SigError)
 }
 
 impl BorshDeserialize for PublicKey {
     fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
         // deserialize the bytes first
-        let bytes: Vec<u8> =
+        let bytes: [u8; 65] =
             BorshDeserialize::deserialize(buf).map_err(|e| {
                 std::io::Error::new(
                     ErrorKind::InvalidInput,
-                    format!("Error decoding ed25519 public key: {}", e),
+                    format!("Error decoding secp256k1 public key: {}", e),
                 )
             })?;
-        ed25519_dalek::PublicKey::from_bytes(&bytes)
+        libsecp256k1::PublicKey::parse(&bytes)
             .map(PublicKey)
             .map_err(|e| {
                 std::io::Error::new(
                     ErrorKind::InvalidInput,
-                    format!("Error decoding ed25519 public key: {}", e),
+                    format!("Error decoding secp256k1 public key: {}", e),
                 )
             })
     }
@@ -116,7 +130,7 @@ impl BorshDeserialize for PublicKey {
 impl BorshSerialize for PublicKey {
     fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
         // We need to turn the signature to bytes first..
-        let vec = self.0.as_bytes().to_vec();
+        let vec = self.0.serialize().to_vec();
         // .. and then encode them with Borsh
         let bytes = vec
             .try_to_vec()
@@ -125,31 +139,34 @@ impl BorshSerialize for PublicKey {
     }
 }
 
+// TODO: add serde deserializer
+
 impl BorshDeserialize for Signature {
     fn deserialize(buf: &mut &[u8]) -> std::io::Result<Self> {
         // deserialize the bytes first
-        let bytes: Vec<u8> =
+        let bytes: [u8; 65] =
             BorshDeserialize::deserialize(buf).map_err(|e| {
                 std::io::Error::new(
                     ErrorKind::InvalidInput,
-                    format!("Error decoding ed25519 signature: {}", e),
+                    format!("Error decoding secp256k1 signature: {}", e),
                 )
             })?;
         // convert them to an expected size array
         let bytes: [u8; SIGNATURE_LEN] = bytes[..].try_into().map_err(|e| {
             std::io::Error::new(
                 ErrorKind::InvalidInput,
-                format!("Error decoding ed25519 signature: {}", e),
+                format!("Error decoding secp256k1 signature: {}", e),
             )
         })?;
-        Ok(Signature(ed25519_dalek::Signature::new(bytes)))
+        // TODO: use parse_standard; handle errors with match instead
+        Ok(Signature(libsecp256k1::Signature::parse_overflowing(&bytes)))
     }
 }
 
 impl BorshSerialize for Signature {
     fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
         // We need to turn the signature to bytes first..
-        let vec = self.0.to_bytes().to_vec();
+        let vec = self.0.serialize().to_vec();
         // .. and then encode them with Borsh
         let bytes = vec
             .try_to_vec()
@@ -200,8 +217,8 @@ impl PartialOrd for Signature {
     }
 }
 
-impl From<ed25519_dalek::PublicKey> for PublicKey {
-    fn from(pk: ed25519_dalek::PublicKey) -> Self {
+impl From<libsecp256k1::PublicKey> for PublicKey {
+    fn from(pk: libsecp256k1::PublicKey) -> Self {
         Self(pk)
     }
 }
