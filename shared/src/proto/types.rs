@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use chrono::{DateTime, Utc};
 use prost::Message;
-use prost_types::Timestamp;
+use prost_types::TimestampOutOfSystemRangeError;
 use thiserror::Error;
 
 use super::generated::types;
@@ -18,6 +18,8 @@ pub enum Error {
     IntentDecodingError(prost::DecodeError),
     #[error("Error decoding an DkgGossipMessage from bytes: {0}")]
     DkgDecodingError(prost::DecodeError),
+    #[error("Error converting a timestamp to SystemTime: {0}")]
+    TimestampConvertingError(TimestampOutOfSystemRangeError),
     #[error("Intent is empty")]
     NoIntentError,
     #[error("Dkg is empty")]
@@ -42,7 +44,8 @@ impl TryFrom<&[u8]> for Tx {
         let tx = types::Tx::decode(tx_bytes).map_err(Error::TxDecodingError)?;
         let timestamp = match tx.timestamp {
             Some(t) => {
-                let t: std::time::SystemTime = t.into();
+                let t: std::time::SystemTime =
+                    t.try_into().map_err(Error::TimestampConvertingError)?;
                 let dt: DateTime<Utc> = t.into();
                 dt.to_rfc3339()
             }
@@ -190,7 +193,7 @@ impl DkgGossipMessage {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Intent {
     pub data: Vec<u8>,
-    pub timestamp: Timestamp,
+    pub timestamp: String,
 }
 
 impl TryFrom<types::Intent> for Intent {
@@ -198,7 +201,12 @@ impl TryFrom<types::Intent> for Intent {
 
     fn try_from(intent: types::Intent) -> Result<Self> {
         let timestamp = match intent.timestamp {
-            Some(t) => t,
+            Some(t) => {
+                let t: std::time::SystemTime =
+                    t.try_into().map_err(Error::TimestampConvertingError)?;
+                let dt: DateTime<Utc> = t.into();
+                dt.to_rfc3339()
+            }
             None => return Err(Error::NoTimestampError),
         };
         Ok(Intent {
@@ -210,9 +218,12 @@ impl TryFrom<types::Intent> for Intent {
 
 impl From<Intent> for types::Intent {
     fn from(intent: Intent) -> Self {
+        let dt = DateTime::parse_from_rfc3339(&intent.timestamp)
+            .expect("conversion shouldn't fail");
+        let st: std::time::SystemTime = dt.into();
         types::Intent {
             data: intent.data,
-            timestamp: Some(intent.timestamp),
+            timestamp: Some(st.into()),
         }
     }
 }
@@ -221,7 +232,7 @@ impl Intent {
     pub fn new(data: Vec<u8>) -> Self {
         Intent {
             data,
-            timestamp: std::time::SystemTime::now().into(),
+            timestamp: Utc::now().to_rfc3339(),
         }
     }
 
@@ -236,8 +247,7 @@ impl Intent {
 impl Hash for Intent {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.data.hash(state);
-        let timestamp: std::time::SystemTime = self.timestamp.clone().into();
-        timestamp.hash(state);
+        self.timestamp.hash(state);
     }
 }
 
