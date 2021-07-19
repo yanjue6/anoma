@@ -15,6 +15,8 @@ use color_eyre::eyre::Result;
 
 pub async fn main() -> Result<()> {
     let (cmd, _global_args) = cli::anoma_client_cli();
+    // TODO there could be a new Cmd for storage read, that sends http query
+    // similar to tx.rs sending dry-run tx
     match cmd {
         cmds::AnomaClient::TxCustom(cmds::TxCustom(args)) => {
             tx::submit_custom(args).await;
@@ -37,6 +39,8 @@ pub async fn main() -> Result<()> {
     }
     Ok(())
 }
+
+// TODO there could be library code to call storage RPC http endpoint.
 
 async fn gossip_intent(
     args::Intent {

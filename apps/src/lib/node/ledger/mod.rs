@@ -3,6 +3,7 @@ pub mod storage;
 mod tendermint;
 
 use std::convert::TryFrom;
+use std::fmt::Display;
 use std::path::Path;
 use std::sync::mpsc;
 
@@ -184,18 +185,28 @@ impl Shell {
                     height: _,
                     prove: _,
                 } => {
-                    if path == "dry_run_tx" {
-                        let result = self
-                            .dry_run_tx(&data)
-                            .map_err(|e| format!("{}", e));
+                    // TODO ledger node receiving RPC request from tendermint
+                    // ABCI
+                    let query: QueryKey = todo!();
+                    match query {
+                        QueryKey::DryRunTx => {
+                            let result = self
+                                .dry_run_tx(&data)
+                                .map_err(|e| format!("{}", e));
 
-                        reply.send(result).map_err(|e| {
-                            Error::AbciChannelSendError(format!(
-                                "ApplyTx {}",
-                                e
-                            ))
-                        })?
+                            reply.send(result).map_err(|e| {
+                                Error::AbciChannelSendError(format!(
+                                    "ApplyTx {}",
+                                    e
+                                ))
+                            })?
+                        }
+                        QueryKey::ReadStorage(key) => {
+                            let (result, _gas) = self.storage.read(&key)?;
+                            reply.send(result)
+                        }
                     }
+                    if path == "dry_run_tx" {}
                 }
                 AbciMsg::Terminate => {
                     tracing::info!("Shutting down Anoma node");
@@ -422,4 +433,26 @@ impl Shell {
         }
         result
     }
+}
+
+enum QueryKey {
+    DryRunTx,
+    ReadStorage(storage::Key),
+}
+
+impl Display for QueryKey {
+    // TODO turn query key into a string for a query
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!("write the query key into string format")
+    }
+}
+
+impl QueryKey {
+    // TODO parse query key from query path
+    fn parse(str: impl AsRef<str>) -> Result<Self, ParseError>;
+}
+
+enum QueryResponse {
+    DryRunTxResponse(std::result::Result<String, String>),
+    ReadStorage(Option<Vec<u8>>),
 }

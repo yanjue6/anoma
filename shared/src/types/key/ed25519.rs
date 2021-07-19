@@ -309,6 +309,36 @@ impl From<PublicKey> for PublicKeyHash {
     }
 }
 
+#[cfg(feature = "js_bindgen")]
+#[wasm_bindgen]
+impl Keypair {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Keypair {
+        let mut rng: ThreadRng = thread_rng();
+        let keypair = Keypair::generate(&mut rng);
+        Keypair(keypair)
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn secret_key_bytes(&self) -> Box<[u8]> {
+        let Keypair(keypair) = &self;
+        Box::new(keypair.secret.to_bytes())
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn public_key_bytes(&self) -> Box<[u8]> {
+        let Keypair(keypair) = &self;
+        Box::new(keypair.public.to_bytes())
+    }
+
+    #[wasm_bindgen]
+    pub fn from_bytes(keys: &[u8]) -> Result<Keypair, Value> {
+        Keypair::from_bytes(keys)
+            .map(Keypair)
+            .map_err(|error| Value::from(error.to_string()))
+    }
+}
+
 /// Run `cargo test gen_keypair -- --nocapture` to generate a keypair.
 #[cfg(test)]
 #[test]

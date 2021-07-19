@@ -151,6 +151,8 @@ dependencies = [
  "tonic-build",
  "tracing",
  "tracing-subscriber",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
  "wasmer",
  "wasmer-compiler-cranelift",
  "wasmer-compiler-singlepass",
@@ -932,6 +934,16 @@ dependencies = [
  "serde_json",
  "toml",
  "yaml-rust",
+]
+
+[[package]]
+name = "console_error_panic_hook"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8d976903543e0c48546a91908f21588a680a8c8f984df9a5d69feccb2b2a211"
+dependencies = [
+ "cfg-if 0.1.10",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -4134,6 +4146,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "scoped-tls"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
+
+[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4564,6 +4582,37 @@ dependencies = [
 [[package]]
 name = "tendermint"
 version = "0.20.0"
+source = "git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis#5ff96bdabd7eba02e2cdeea90799cc8d72effea5"
+dependencies = [
+ "anomaly",
+ "async-trait",
+ "bytes 1.0.1",
+ "chrono",
+ "ed25519",
+ "ed25519-dalek",
+ "futures",
+ "num-traits 0.2.14",
+ "once_cell",
+ "prost",
+ "prost-types",
+ "serde 1.0.126",
+ "serde_bytes",
+ "serde_json",
+ "serde_repr",
+ "sha2 0.9.5",
+ "signature",
+ "subtle 2.4.0",
+ "subtle-encoding",
+ "tendermint-proto 0.20.0 (git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis)",
+ "thiserror",
+ "toml",
+ "url",
+ "zeroize",
+]
+
+[[package]]
+name = "tendermint"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7d330f5d92e5e1c7a84130805b48b4983d98a37257034544492e3566315142b"
 dependencies = [
@@ -4594,37 +4643,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tendermint"
-version = "0.20.0"
-source = "git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis#5ff96bdabd7eba02e2cdeea90799cc8d72effea5"
-dependencies = [
- "anomaly",
- "async-trait",
- "bytes 1.0.1",
- "chrono",
- "ed25519",
- "ed25519-dalek",
- "futures",
- "num-traits 0.2.14",
- "once_cell",
- "prost",
- "prost-types",
- "serde 1.0.126",
- "serde_bytes",
- "serde_json",
- "serde_repr",
- "sha2 0.9.5",
- "signature",
- "subtle 2.4.0",
- "subtle-encoding",
- "tendermint-proto 0.20.0 (git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis)",
- "thiserror",
- "toml",
- "url",
- "zeroize",
-]
-
-[[package]]
 name = "tendermint-abci"
 version = "0.20.0"
 source = "git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis#5ff96bdabd7eba02e2cdeea90799cc8d72effea5"
@@ -4640,8 +4658,7 @@ dependencies = [
 [[package]]
 name = "tendermint-proto"
 version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fadcaea1eecd91dbdd9636fe8ad38d2b41fc0ae814c176e51e00925cdda78a34"
+source = "git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis#5ff96bdabd7eba02e2cdeea90799cc8d72effea5"
 dependencies = [
  "anomaly",
  "bytes 1.0.1",
@@ -4659,7 +4676,8 @@ dependencies = [
 [[package]]
 name = "tendermint-proto"
 version = "0.20.0"
-source = "git+https://github.com/heliaxdev/tendermint-rs?branch=tomas/update-genesis#5ff96bdabd7eba02e2cdeea90799cc8d72effea5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fadcaea1eecd91dbdd9636fe8ad38d2b41fc0ae814c176e51e00925cdda78a34"
 dependencies = [
  "anomaly",
  "bytes 1.0.1",
@@ -5384,6 +5402,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d54ee1d4ed486f78874278e63e4069fc1ab9f6a18ca492076ffb90c5eb2997fd"
 dependencies = [
  "cfg-if 1.0.0",
+ "serde 1.0.126",
+ "serde_json",
  "wasm-bindgen-macro",
 ]
 
@@ -5442,6 +5462,30 @@ name = "wasm-bindgen-shared"
 version = "0.2.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7cff876b8f18eed75a66cf49b65e7f967cb354a7aa16003fb55dbfd25b44b4f"
+
+[[package]]
+name = "wasm-bindgen-test"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cab416a9b970464c2882ed92d55b0c33046b08e0bdc9d59b3b718acd4e1bae8"
+dependencies = [
+ "console_error_panic_hook",
+ "js-sys",
+ "scoped-tls",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test-macro",
+]
+
+[[package]]
+name = "wasm-bindgen-test-macro"
+version = "0.3.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd4543fc6cf3541ef0d98bf720104cc6bd856d7eba449fd2aa365ef4fed0e782"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
 
 [[package]]
 name = "wasm-timer"

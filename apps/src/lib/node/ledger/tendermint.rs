@@ -263,6 +263,7 @@ impl tendermint_abci::Application for AbciWrapper {
         let height = request.height as u64;
         let prove = request.prove;
 
+        // TODO sends RPC query from tendermint http endpoint to the Anoma node
         self.sender
             .send(AbciMsg::AbciQuery {
                 reply,
@@ -273,6 +274,7 @@ impl tendermint_abci::Application for AbciWrapper {
             })
             .expect("failed to send AbciQuery request");
 
+        // TODO receives RPC query result from the Anoma node
         let result = reply_receiver
             .recv()
             .expect("failed to receive AbciQuery response");

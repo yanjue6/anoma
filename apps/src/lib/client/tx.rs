@@ -78,6 +78,7 @@ async fn submit_tx(args: args::Tx, tx: Tx) {
     if args.dry_run {
         let path = FromStr::from_str("dry_run_tx").unwrap();
 
+        // NOTE this is how we send RPC query from client to the node
         let response = client
             .abci_query(Some(path), tx_bytes, None, false)
             .await
