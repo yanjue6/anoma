@@ -291,7 +291,9 @@ mod tests {
                 // Value obtained from `anoma::types::key::ed25519::tests::gen_keypair`
                 "200000001be519a321e29020fa3cbfbfd01bd5e92db134305609270b71dace25b5a21168",
                 "--code-path",
-                VP_USER_WASM
+                VP_USER_WASM,
+                "--alias",
+                "test-account"
             ],
         ];
         for tx_args in &txs_args {
@@ -730,6 +732,8 @@ mod tests {
         //  Send intent A
         let mut send_intent_a = Command::cargo_bin("anomac")?;
         send_intent_a.args(&[
+            "--base-dir",
+            first_node_dir,
             "intent",
             "--node",
             "http://127.0.0.1:39111",
@@ -737,8 +741,8 @@ mod tests {
             intent_a_path_input.to_str().unwrap(),
             "--topic",
             "asset_v1",
-            "--key",
-            BERTHA,
+            "--signing-key",
+            "Bertha",
         ]);
 
         let mut session_send_intent_a =
@@ -759,6 +763,8 @@ mod tests {
         // Send intent B
         let mut send_intent_b = Command::cargo_bin("anomac")?;
         send_intent_b.args(&[
+            "--base-dir",
+            first_node_dir,
             "intent",
             "--node",
             "http://127.0.0.1:39111",
@@ -766,8 +772,8 @@ mod tests {
             intent_b_path_input.to_str().unwrap(),
             "--topic",
             "asset_v1",
-            "--key",
-            ALBERT,
+            "--signing-key",
+            "Alberto",
         ]);
         let mut session_send_intent_b =
             spawn_command(send_intent_b, Some(20_000))
@@ -787,6 +793,8 @@ mod tests {
         // Send intent C
         let mut send_intent_c = Command::cargo_bin("anomac")?;
         send_intent_c.args(&[
+            "--base-dir",
+            first_node_dir,
             "intent",
             "--node",
             "http://127.0.0.1:39111",
@@ -794,8 +802,8 @@ mod tests {
             intent_c_path_input.to_str().unwrap(),
             "--topic",
             "asset_v1",
-            "--key",
-            CHRISTEL,
+            "--signing-key",
+            "Christel",
         ]);
         let mut session_send_intent_c =
             spawn_command(send_intent_c, Some(20_000))

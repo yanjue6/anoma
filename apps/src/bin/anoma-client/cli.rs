@@ -5,7 +5,7 @@ use std::io::Write;
 
 use anoma::types::intent::{Exchange, FungibleTokenIntent};
 use anoma::types::key::ed25519::Signed;
-use anoma_apps::cli::{args, cmds};
+use anoma_apps::cli::{args, cmds, Context};
 use anoma_apps::client::{rpc, tx};
 use anoma_apps::proto::services::rpc_service_client::RpcServiceClient;
 use anoma_apps::proto::{services, RpcMessage};
@@ -14,20 +14,20 @@ use borsh::BorshSerialize;
 use color_eyre::eyre::Result;
 
 pub async fn main() -> Result<()> {
-    let (cmd, _global_args) = cli::anoma_client_cli();
+    let (cmd, ctx) = cli::anoma_client_cli();
     match cmd {
         // Ledger cmds
         cmds::AnomaClient::TxCustom(cmds::TxCustom(args)) => {
-            tx::submit_custom(args).await;
+            tx::submit_custom(ctx, args).await;
         }
         cmds::AnomaClient::TxTransfer(cmds::TxTransfer(args)) => {
-            tx::submit_transfer(args).await;
+            tx::submit_transfer(ctx, args).await;
         }
         cmds::AnomaClient::TxUpdateVp(cmds::TxUpdateVp(args)) => {
-            tx::submit_update_vp(args).await;
+            tx::submit_update_vp(ctx, args).await;
         }
         cmds::AnomaClient::TxInitAccount(cmds::TxInitAccount(args)) => {
-            tx::submit_init_account(args).await;
+            tx::submit_init_account(ctx, args).await;
         }
         cmds::AnomaClient::Bond(cmds::Bond(args)) => {
             tx::submit_bond(args).await;
@@ -42,7 +42,7 @@ pub async fn main() -> Result<()> {
             rpc::query_epoch(args).await;
         }
         cmds::AnomaClient::QueryBalance(cmds::QueryBalance(args)) => {
-            rpc::query_balance(args).await;
+            rpc::query_balance(ctx, args).await;
         }
         cmds::AnomaClient::QueryBonds(cmds::QueryBonds(args)) => {
             rpc::query_bonds(args).await;
@@ -55,20 +55,21 @@ pub async fn main() -> Result<()> {
         }
         // Gossip cmds
         cmds::AnomaClient::Intent(cmds::Intent(args)) => {
-            gossip_intent(args).await;
+            gossip_intent(ctx, args).await;
         }
         cmds::AnomaClient::SubscribeTopic(cmds::SubscribeTopic(args)) => {
-            subscribe_topic(args).await;
+            subscribe_topic(ctx, args).await;
         }
     }
     Ok(())
 }
 
 async fn gossip_intent(
+    ctx: Context,
     args::Intent {
         node_addr,
         topic,
-        key,
+        signing_key,
         exchanges,
         to_stdout,
     }: args::Intent,
@@ -76,14 +77,16 @@ async fn gossip_intent(
     let signed_exchanges: HashSet<Signed<Exchange>> = exchanges
         .iter()
         .map(|exchange| {
-            let source_keypair = wallet::key_of(exchange.addr.encode());
+            let source_keypair =
+                wallet::defaults::key_of(exchange.addr.encode());
             Signed::new(&source_keypair, exchange.clone())
         })
         .collect();
 
-    let signing_key = wallet::key_of(key.encode());
+    let signing_key = signing_key.get(&ctx);
+    let signing_key = signing_key.get();
     let signed_ft: Signed<FungibleTokenIntent> = Signed::new(
-        &signing_key,
+        signing_key,
         FungibleTokenIntent {
             exchange: signed_exchanges,
         },
@@ -115,6 +118,7 @@ async fn gossip_intent(
 }
 
 async fn subscribe_topic(
+    _ctx: Context,
     args::SubscribeTopic { node_addr, topic }: args::SubscribeTopic,
 ) {
     let mut client = RpcServiceClient::connect(node_addr).await.unwrap();
