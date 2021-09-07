@@ -98,8 +98,7 @@ fn validate_tx(
                     Some(bond_id) => {
                         // Bonds and unbonds changes for this address
                         // must be signed
-                        (bond_id.source == addr && valid_sig)
-                            || bond_id.source != addr
+                        bond_id.source != addr || valid_sig
                     }
                     None => {
                         // Any other PoS changes are allowed without signature
