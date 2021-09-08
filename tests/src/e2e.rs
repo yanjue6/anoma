@@ -773,7 +773,7 @@ mod tests {
             "--topic",
             "asset_v1",
             "--signing-key",
-            "Alberto",
+            "Albert",
         ]);
         let mut session_send_intent_b =
             spawn_command(send_intent_b, Some(20_000))
