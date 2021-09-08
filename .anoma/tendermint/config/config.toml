@@ -35,7 +35,7 @@ pprof_laddr = ""
 laddr = "tcp://0.0.0.0:26656"
 external_address = ""
 seeds = ""
-persistent_peers = ""
+persistent_peers = "72eb02444a4736d569734675c6ba893aadb3fb99@52.210.23.30:26656,39f31bcf0a0b73a08d9e18f4e9cada33d4997779@63.34.55.152:26656,d7d2e6e942b157df4137ca3b47258ca20db00416@54.195.72.213:26656,31752d323de34e4dcd36ecf30b4ed179de7dc48a@79.125.112.218:26656"
 upnp = false
 addr_book_file = "config/addrbook.json"
 addr_book_strict = true
@@ -47,7 +47,7 @@ flush_throttle_timeout = "100ms"
 max_packet_msg_payload_size = 1024
 send_rate = 5120000
 recv_rate = 5120000
-pex = true
+pex = false
 seed_mode = false
 private_peer_ids = ""
 allow_duplicate_ip = false
@@ -62,7 +62,7 @@ size = 5000
 max_txs_bytes = 1073741824
 cache_size = 10000
 keep-invalid-txs-in-cache = false
-max_tx_bytes = 1048576
+max_tx_bytes = 2097152
 max_batch_bytes = 0
 
 [consensus]
