@@ -35,8 +35,6 @@ pub struct Validator {
 pub fn genesis() -> Genesis {
     use anoma::types::address;
 
-    use crate::wallet;
-
     // NOTE When the validator's key changes, tendermint must be reset with
     // `anoma reset` command. To generate a new validator, use the
     // `tests::gen_genesis_validator` below.
@@ -44,13 +42,6 @@ pub fn genesis() -> Genesis {
     let public_key2: PublicKey = FromStr::from_str("20000000f7ef2722b9cb6d119e9e836feb1839ef5f1403da023fea62ea2c18d93b913b4f").unwrap();
     let public_key3: PublicKey = FromStr::from_str("20000000807ae82a2d3a4ea97b1b29cc32a02b65dc09823bbc67a5596ec9b84b5c4932b5").unwrap();
     let public_key4: PublicKey = FromStr::from_str("20000000828ad4d324bec69149010105a4dca567c2bb2ecb649b49575917ff021530d38c").unwrap();
-    let staking_reward_keypair = Keypair::from_bytes(&[
-        61, 198, 87, 204, 44, 94, 234, 228, 217, 72, 245, 27, 40, 2, 151, 174,
-        24, 247, 69, 6, 9, 30, 44, 16, 88, 238, 77, 162, 243, 125, 240, 206,
-        111, 92, 66, 23, 105, 211, 33, 236, 5, 208, 17, 88, 177, 112, 100, 154,
-        1, 132, 143, 67, 162, 121, 136, 247, 20, 67, 4, 27, 226, 63, 47, 57,
-    ])
-    .unwrap();
 
     let validator1 = Validator {
         pos_data: GenesisValidator {
