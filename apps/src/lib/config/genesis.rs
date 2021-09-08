@@ -1,5 +1,7 @@
 //! The parameters used for the chain's genesis
 
+use std::str::FromStr;
+
 use anoma::ledger::parameters::{EpochDuration, Parameters};
 use anoma::ledger::pos::{GenesisValidator, PosParams};
 use anoma::types::address::Address;
@@ -38,9 +40,10 @@ pub fn genesis() -> Genesis {
     // NOTE When the validator's key changes, tendermint must be reset with
     // `anoma reset` command. To generate a new validator, use the
     // `tests::gen_genesis_validator` below.
-    // TODO generate these on machines all get the public key
-    let consensus_keypair = wallet::defaults::validator_keypair();
-    let account_keypair = wallet::defaults::validator_keypair();
+    let public_key1: PublicKey = FromStr::from_str("2000000011f678e1ca3d048d518aefc7de9e3e7f37114c6dd70cf3c8aaea684551f79691").unwrap();
+    let public_key2: PublicKey = FromStr::from_str("20000000f7ef2722b9cb6d119e9e836feb1839ef5f1403da023fea62ea2c18d93b913b4f").unwrap();
+    let public_key3: PublicKey = FromStr::from_str("20000000807ae82a2d3a4ea97b1b29cc32a02b65dc09823bbc67a5596ec9b84b5c4932b5").unwrap();
+    let public_key4: PublicKey = FromStr::from_str("20000000828ad4d324bec69149010105a4dca567c2bb2ecb649b49575917ff021530d38c").unwrap();
     let staking_reward_keypair = Keypair::from_bytes(&[
         61, 198, 87, 204, 44, 94, 234, 228, 217, 72, 245, 27, 40, 2, 151, 174,
         24, 247, 69, 6, 9, 30, 44, 16, 88, 238, 77, 162, 243, 125, 240, 206,
@@ -54,10 +57,10 @@ pub fn genesis() -> Genesis {
             address: address::validator1(),
             staking_reward_address: Address::decode("a1qq5qqqqqxaz5vven8yu5gdpng9zrys6ygvurwv3sgsmrvd6xgdzrys6yg4pnwd6z89rrqv2xvjcy9t").unwrap(),
             tokens: token::Amount::whole(200_000),
-            consensus_key: consensus_keypair.public.clone(),
-            staking_reward_key: staking_reward_keypair.public.clone(),
+            consensus_key: public_key1.clone(),
+            staking_reward_key: public_key1.clone(),
         },
-        account_key: account_keypair.public.clone(),
+        account_key: public_key1,
         non_staked_balance: token::Amount::whole(100_000),
     };
     let validator2 = Validator {
@@ -65,10 +68,10 @@ pub fn genesis() -> Genesis {
             address: address::validator2(),
             staking_reward_address: Address::decode("a1qq5qqqqq8yerz3zpgcu5vsjxggurxw2rgy65vv3j8pz5v3zygycrg3z9xprrxw2yxfq5vdphd6egxa").unwrap(),
             tokens: token::Amount::whole(200_000),
-            consensus_key: consensus_keypair.public.clone(),
-            staking_reward_key: staking_reward_keypair.public.clone(),
+            consensus_key: public_key2.clone(),
+            staking_reward_key: public_key2.clone(),
         },
-        account_key: account_keypair.public.clone(),
+        account_key: public_key2,
         non_staked_balance: token::Amount::whole(100_000),
     };
     let validator3 = Validator {
@@ -76,10 +79,10 @@ pub fn genesis() -> Genesis {
             address: address::validator3(),
             staking_reward_address: Address::decode("a1qq5qqqqqx56r2v2rx3qn2s33ggenjdes8qur2wfj8pzy2d2xx4przvz9gvcnwdpcxgc5x3j9hxjm34").unwrap(),
             tokens: token::Amount::whole(200_000),
-            consensus_key: consensus_keypair.public.clone(),
-            staking_reward_key: staking_reward_keypair.public.clone(),
+            consensus_key: public_key3.clone(),
+            staking_reward_key: public_key3.clone(),
         },
-        account_key: account_keypair.public.clone(),
+        account_key: public_key3,
         non_staked_balance: token::Amount::whole(100_000),
     };
     let validator4 = Validator {
@@ -87,10 +90,10 @@ pub fn genesis() -> Genesis {
             address: address::validator4(),
             staking_reward_address: Address::decode("a1qq5qqqqqxazrvw2zx5mrs3pcxum5zvpkgs6rvd2zxpzrqd3hggurydjrg565xw29gepyywzykgzmk0").unwrap(),
             tokens: token::Amount::whole(200_000),
-            consensus_key: consensus_keypair.public.clone(),
-            staking_reward_key: staking_reward_keypair.public.clone(),
+            consensus_key: public_key4.clone(),
+            staking_reward_key: public_key4.clone(),
         },
-        account_key: account_keypair.public.clone(),
+        account_key: public_key4,
         non_staked_balance: token::Amount::whole(100_000),
     };
 
