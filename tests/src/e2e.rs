@@ -505,7 +505,7 @@ mod tests {
         let data = transfer
             .try_to_vec()
             .expect("Encoding unsigned transfer shouldn't fail");
-        let source_key = wallet::key_of(BERTHA);
+        let source_key = wallet::defaults::key_of(BERTHA);
         let tx_wasm_path = TX_MINT_TOKENS_WASM;
         let tx_wasm_path_abs = working_dir.join(&tx_wasm_path);
         println!("Reading tx wasm for test from {:?}", tx_wasm_path_abs);
