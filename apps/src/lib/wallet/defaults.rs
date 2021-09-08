@@ -18,16 +18,10 @@ pub fn keys() -> Vec<(Alias, Keypair)> {
 
 /// The default addresses with their aliases.
 pub fn addresses() -> Vec<(Alias, Address)> {
-    let albert = Address::decode("a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx")
-            .expect("The genesis address shouldn't fail decoding");
-    let bertha = Address::decode("a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9")
-            .expect("The genesis address shouldn't fail decoding");
-    let christel = Address::decode("a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s")
+    let fountain = Address::decode("a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx")
             .expect("The genesis address shouldn't fail decoding");
     let mut addresses: Vec<(Alias, Address)> = vec![
-        ("Albert".into(), albert),
-        ("Bertha".into(), bertha),
-        ("Christel".into(), christel),
+        ("fountain".into(), fountain),
         ("matchmaker".into(), address::matchmaker()),
         ("validator1".into(), address::validator1()),
         ("validator2".into(), address::validator2()),
