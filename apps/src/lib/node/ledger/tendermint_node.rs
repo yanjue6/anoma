@@ -6,16 +6,16 @@ use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
-#[cfg(feature = "dev")]
-use anoma::types::key::ed25519::Keypair;
-use serde_json::json;
+// #[cfg(feature = "dev")]
+// use anoma::types::key::ed25519::Keypair;
+// use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::iterator::Signals;
 use tendermint::config::TendermintConfig;
 use thiserror::Error;
 
 use crate::config;
-use crate::config::genesis::{self, Validator};
+// use crate::config::genesis::{self, Validator};
 use crate::std::sync::mpsc::Sender;
 
 #[derive(Error, Debug)]
@@ -54,16 +54,16 @@ pub fn run(
         panic!("Tendermint failed to initialize with {:#?}", output);
     }
 
-    if cfg!(feature = "dev") {
-        let genesis = &genesis::genesis();
-        // override the validator key file
-        write_validator_key(
-            &home_dir,
-            &genesis.validator,
-            &genesis.validator_consensus_key,
-        );
-        write_chain_id(&home_dir, config::DEFAULT_CHAIN_ID);
-    }
+    // if cfg!(feature = "dev") {
+    // let genesis = &genesis::genesis();
+    // // override the validator key file
+    // write_validator_key(
+    //     &home_dir,
+    //     &genesis.validator,
+    //     &genesis.validator_consensus_key,
+    // );
+    // }
+    write_chain_id(&home_dir, config::DEFAULT_CHAIN_ID);
 
     update_tendermint_config(&home_dir)?;
     let tendermint_node = Command::new("tendermint")
@@ -175,35 +175,35 @@ fn update_tendermint_config(home_dir: impl AsRef<Path>) -> Result<()> {
         .map_err(Error::WriteConfig)
 }
 
-#[cfg(feature = "dev")]
-fn write_validator_key(
-    home_dir: impl AsRef<Path>,
-    validator: &Validator,
-    validator_key: &Keypair,
-) {
-    let home_dir = home_dir.as_ref();
-    let path = home_dir.join("config").join("priv_validator_key.json");
-    let file =
-        File::create(path).expect("Couldn't create private validator key file");
-    let pk: ed25519_dalek::PublicKey =
-        validator.pos_data.consensus_key.clone().into();
-    let pk = base64::encode(pk.as_bytes());
-    let sk = base64::encode(validator_key.to_bytes());
-    let address = validator.pos_data.address.raw_hash().unwrap();
-    let key = json!({
-       "address": address,
-       "pub_key": {
-         "type": "tendermint/PubKeyEd25519",
-         "value": pk,
-       },
-       "priv_key": {
-         "type": "tendermint/PrivKeyEd25519",
-         "value": sk,
-      }
-    });
-    serde_json::to_writer_pretty(file, &key)
-        .expect("Couldn't write private validator key file");
-}
+// #[cfg(feature = "dev")]
+// fn write_validator_key(
+//     home_dir: impl AsRef<Path>,
+//     validator: &Validator,
+//     validator_key: &Keypair,
+// ) {
+//     let home_dir = home_dir.as_ref();
+//     let path = home_dir.join("config").join("priv_validator_key.json");
+//     let file =
+//         File::create(path).expect("Couldn't create private validator key
+// file");     let pk: ed25519_dalek::PublicKey =
+//         validator.pos_data.consensus_key.clone().into();
+//     let pk = base64::encode(pk.as_bytes());
+//     let sk = base64::encode(validator_key.to_bytes());
+//     let address = validator.pos_data.address.raw_hash().unwrap();
+//     let key = json!({
+//        "address": address,
+//        "pub_key": {
+//          "type": "tendermint/PubKeyEd25519",
+//          "value": pk,
+//        },
+//        "priv_key": {
+//          "type": "tendermint/PrivKeyEd25519",
+//          "value": sk,
+//       }
+//     });
+//     serde_json::to_writer_pretty(file, &key)
+//         .expect("Couldn't write private validator key file");
+// }
 
 #[cfg(feature = "dev")]
 fn write_chain_id(home_dir: impl AsRef<Path>, chain_id: impl AsRef<str>) {

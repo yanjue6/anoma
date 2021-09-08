@@ -13,7 +13,6 @@ pub fn keys() -> Vec<(Alias, Keypair)> {
         ("Bertha".into(), bertha_keypair()),
         ("Christel".into(), christel_keypair()),
         ("matchmaker".into(), matchmaker_keypair()),
-        ("validator".into(), validator_keypair()),
     ]
 }
 
@@ -30,7 +29,10 @@ pub fn addresses() -> Vec<(Alias, Address)> {
         ("Bertha".into(), bertha),
         ("Christel".into(), christel),
         ("matchmaker".into(), address::matchmaker()),
-        ("validator".into(), address::validator()),
+        ("validator1".into(), address::validator1()),
+        ("validator2".into(), address::validator2()),
+        ("validator3".into(), address::validator3()),
+        ("validator4".into(), address::validator4()),
         ("PoS".into(), pos::ADDRESS),
         ("PosSlashPool".into(), pos::SLASH_POOL_ADDRESS),
     ];

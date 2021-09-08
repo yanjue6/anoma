@@ -358,8 +358,23 @@ pub fn matchmaker() -> Address {
 }
 
 /// Validator address for development and testing
-pub fn validator() -> Address {
+pub fn validator1() -> Address {
     Address::decode("a1qq5qqqqqgfqnsd6pxse5zdj9g5crzsf5x4zyzv6yxerr2d2rxpryzwp5g5m5zvfjxv6ygsekjmraj0").expect("The address decoding shouldn't fail")
+}
+
+/// Validator address for development and testing
+pub fn validator2() -> Address {
+    Address::decode("a1qq5qqqqqxpzn2s2yxdprxvzxxdq5xv3nx5crgdfs8q6nyvfeg5unqsfkgy6nss6xgsmn2vpklecs94").expect("The address decoding shouldn't fail")
+}
+
+/// Validator address for development and testing
+pub fn validator3() -> Address {
+    Address::decode("a1qq5qqqqqg4prvvf4xazngv34xaznss6xg5u5vd6rgv6rqdjrx3znx32xgfznqwfkgdpng3p4p3r3un").expect("The address decoding shouldn't fail")
+}
+
+/// Validator address for development and testing
+pub fn validator4() -> Address {
+    Address::decode("a1qq5qqqqq8qurxvp58pprxvp3geprwdp4xpryy3z98y6ng3fcxumyzv3e8qunxd34xymngdek3j9jz4").expect("The address decoding shouldn't fail")
 }
 
 #[cfg(test)]

@@ -10,14 +10,7 @@ use anoma::types::token;
 
 #[derive(Debug)]
 pub struct Genesis {
-    #[cfg(not(feature = "dev"))]
     pub validators: Vec<Validator>,
-    #[cfg(feature = "dev")]
-    pub validator: Validator,
-    /// The consensus key will be written into Tendermint node's
-    /// `priv_validator_key.json`
-    #[cfg(feature = "dev")]
-    pub validator_consensus_key: Keypair,
     pub parameters: Parameters,
     pub pos_params: PosParams,
 }
@@ -37,7 +30,6 @@ pub struct Validator {
     pub non_staked_balance: token::Amount,
 }
 
-#[cfg(feature = "dev")]
 pub fn genesis() -> Genesis {
     use anoma::types::address;
 
@@ -46,6 +38,7 @@ pub fn genesis() -> Genesis {
     // NOTE When the validator's key changes, tendermint must be reset with
     // `anoma reset` command. To generate a new validator, use the
     // `tests::gen_genesis_validator` below.
+    // TODO generate these on machines all get the public key
     let consensus_keypair = wallet::defaults::validator_keypair();
     let account_keypair = wallet::defaults::validator_keypair();
     let staking_reward_keypair = Keypair::from_bytes(&[
@@ -55,19 +48,53 @@ pub fn genesis() -> Genesis {
         1, 132, 143, 67, 162, 121, 136, 247, 20, 67, 4, 27, 226, 63, 47, 57,
     ])
     .unwrap();
-    let address = address::validator();
-    let staking_reward_address = Address::decode("a1qq5qqqqqxaz5vven8yu5gdpng9zrys6ygvurwv3sgsmrvd6xgdzrys6yg4pnwd6z89rrqv2xvjcy9t").unwrap();
-    let validator = Validator {
+
+    let validator1 = Validator {
         pos_data: GenesisValidator {
-            address,
-            staking_reward_address,
+            address: address::validator1(),
+            staking_reward_address: Address::decode("a1qq5qqqqqxaz5vven8yu5gdpng9zrys6ygvurwv3sgsmrvd6xgdzrys6yg4pnwd6z89rrqv2xvjcy9t").unwrap(),
             tokens: token::Amount::whole(200_000),
             consensus_key: consensus_keypair.public.clone(),
-            staking_reward_key: staking_reward_keypair.public,
+            staking_reward_key: staking_reward_keypair.public.clone(),
         },
-        account_key: account_keypair.public,
+        account_key: account_keypair.public.clone(),
         non_staked_balance: token::Amount::whole(100_000),
     };
+    let validator2 = Validator {
+        pos_data: GenesisValidator {
+            address: address::validator2(),
+            staking_reward_address: Address::decode("a1qq5qqqqq8yerz3zpgcu5vsjxggurxw2rgy65vv3j8pz5v3zygycrg3z9xprrxw2yxfq5vdphd6egxa").unwrap(),
+            tokens: token::Amount::whole(200_000),
+            consensus_key: consensus_keypair.public.clone(),
+            staking_reward_key: staking_reward_keypair.public.clone(),
+        },
+        account_key: account_keypair.public.clone(),
+        non_staked_balance: token::Amount::whole(100_000),
+    };
+    let validator3 = Validator {
+        pos_data: GenesisValidator {
+            address: address::validator3(),
+            staking_reward_address: Address::decode("a1qq5qqqqqx56r2v2rx3qn2s33ggenjdes8qur2wfj8pzy2d2xx4przvz9gvcnwdpcxgc5x3j9hxjm34").unwrap(),
+            tokens: token::Amount::whole(200_000),
+            consensus_key: consensus_keypair.public.clone(),
+            staking_reward_key: staking_reward_keypair.public.clone(),
+        },
+        account_key: account_keypair.public.clone(),
+        non_staked_balance: token::Amount::whole(100_000),
+    };
+    let validator4 = Validator {
+        pos_data: GenesisValidator {
+            address: address::validator4(),
+            staking_reward_address: Address::decode("a1qq5qqqqqxazrvw2zx5mrs3pcxum5zvpkgs6rvd2zxpzrqd3hggurydjrg565xw29gepyywzykgzmk0").unwrap(),
+            tokens: token::Amount::whole(200_000),
+            consensus_key: consensus_keypair.public.clone(),
+            staking_reward_key: staking_reward_keypair.public.clone(),
+        },
+        account_key: account_keypair.public.clone(),
+        non_staked_balance: token::Amount::whole(100_000),
+    };
+
+    let validators = vec![validator1, validator2, validator3, validator4];
     let parameters = Parameters {
         epoch_duration: EpochDuration {
             min_num_of_blocks: 10,
@@ -75,8 +102,7 @@ pub fn genesis() -> Genesis {
         },
     };
     Genesis {
-        validator,
-        validator_consensus_key: consensus_keypair,
+        validators,
         parameters,
         pos_params: PosParams::default(),
     }

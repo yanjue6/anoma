@@ -216,9 +216,6 @@ impl Shell {
             )
             .expect("Initializing genesis epoch must not fail");
 
-        #[cfg(feature = "dev")]
-        let validators = vec![genesis.validator];
-        #[cfg(not(feature = "dev"))]
         let validators = genesis.validators;
 
         // Write validators' VPs and non-staked tokens amount
