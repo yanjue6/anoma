@@ -166,7 +166,7 @@ impl Shell {
 
             // fountain's public keys for testing
             let pk_key = key::ed25519::pk_key(user);
-            let pk: PublicKey = FromStr::from_str("2000000011f678e1ca3d048d518aefc7de9e3e7f37114c6dd70cf3c8aaea684551f79691").unwrap();
+            let pk: PublicKey = FromStr::from_str("2000000071618a5e618d7866893deafe487054aacfa9e124261589e4867f8a88199f3135").unwrap();
             self.storage
                 .write(&pk_key, pk.try_to_vec().expect("encode public key"))
                 .expect("Unable to set genesis user public key");
