@@ -14,6 +14,7 @@ use anoma::ledger::storage::write_log::WriteLog;
 use anoma::ledger::{ibc, parameters, pos};
 use anoma::proto::{self, Tx};
 use anoma::types::address::Address;
+use anoma::types::key::ed25519::PublicKey;
 use anoma::types::storage::{BlockHash, BlockHeight, Key};
 use anoma::types::time::{DateTime, DateTimeUtc, TimeZone, Utc};
 use anoma::types::token::Amount;
@@ -162,6 +163,13 @@ impl Shell {
                         .expect("encode token amount"),
                 )
                 .expect("Unable to set genesis balance");
+
+            // fountain's public keys for testing
+            let pk_key = key::ed25519::pk_key(user);
+            let pk: PublicKey = FromStr::from_str("2000000011f678e1ca3d048d518aefc7de9e3e7f37114c6dd70cf3c8aaea684551f79691").unwrap();
+            self.storage
+                .write(&pk_key, pk.try_to_vec().expect("encode public key"))
+                .expect("Unable to set genesis user public key");
         }
 
         // Temporary for testing, we have a fixed matchmaker account.  This
