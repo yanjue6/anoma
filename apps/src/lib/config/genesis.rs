@@ -5,8 +5,6 @@ use std::str::FromStr;
 use anoma::ledger::parameters::{EpochDuration, Parameters};
 use anoma::ledger::pos::{GenesisValidator, PosParams};
 use anoma::types::address::Address;
-#[cfg(feature = "dev")]
-use anoma::types::key::ed25519::Keypair;
 use anoma::types::key::ed25519::PublicKey;
 use anoma::types::token;
 
