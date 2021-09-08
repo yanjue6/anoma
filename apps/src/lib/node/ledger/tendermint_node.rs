@@ -65,7 +65,7 @@ pub fn run(
     // }
     write_chain_id(&home_dir, config::DEFAULT_CHAIN_ID);
 
-    update_tendermint_config(&home_dir)?;
+    // update_tendermint_config(&home_dir)?;
     let tendermint_node = Command::new("tendermint")
         .args(&[
             "node",
@@ -142,6 +142,7 @@ pub fn reset(config: config::Ledger) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn update_tendermint_config(home_dir: impl AsRef<Path>) -> Result<()> {
     let home_dir = home_dir.as_ref();
     let path = home_dir.join("config").join("config.toml");
