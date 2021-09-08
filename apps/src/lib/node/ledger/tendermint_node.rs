@@ -150,7 +150,7 @@ fn update_tendermint_config(home_dir: impl AsRef<Path>) -> Result<()> {
 
     // In "dev", only produce blocks when there are txs or when the AppHash
     // changes
-    config.consensus.create_empty_blocks = !cfg!(feature = "dev");
+    // config.consensus.create_empty_blocks = !cfg!(feature = "dev");
 
     // We set this to true as we don't want any invalid tx be re-applied. This
     // also implies that it's not possible for an invalid tx to become valid
@@ -159,7 +159,7 @@ fn update_tendermint_config(home_dir: impl AsRef<Path>) -> Result<()> {
 
     // Bumped from the default `1_000_000`, because some WASMs can be
     // quite large
-    config.rpc.max_body_bytes = 2_000_000;
+    // config.rpc.max_body_bytes = 2_000_000;
 
     // TODO broadcast_tx_commit shouldn't be used live;
     config.rpc.timeout_broadcast_tx_commit = Duration::from_secs(20).into();
