@@ -1045,10 +1045,6 @@ pub mod args {
         pub code_path: PathBuf,
         /// Path to the data file
         pub data_path: Option<PathBuf>,
-        /// Sign the tx with the key for the given alias from your wallet
-        pub signing_key: Option<LazyWalletKeypair>,
-        /// Sign the tx with the keypair of the public key of the given address
-        pub signer: Option<Address>,
     }
 
     impl Args for TxCustom {
@@ -1056,14 +1052,10 @@ pub mod args {
             let tx = Tx::parse(ctx, matches);
             let code_path = CODE_PATH.parse(ctx, matches);
             let data_path = DATA_PATH_OPT.parse(ctx, matches);
-            let signing_key = SIGNING_KEY_OPT.parse(ctx, matches);
-            let signer = SIGNER.parse(ctx, matches);
             Self {
                 tx,
                 code_path,
                 data_path,
-                signing_key,
-                signer,
             }
         }
 
@@ -1079,25 +1071,6 @@ pub mod args {
                      will be passed to the transaction code when it's \
                      executed.",
                 ))
-                .arg(
-                    SIGNING_KEY_OPT
-                        .def()
-                        .about(
-                            "Sign the transaction with the key for the given \
-                             public key, public key hash or alias from your \
-                             wallet.",
-                        )
-                        .conflicts_with(SIGNER.name),
-                )
-                .arg(
-                    SIGNER
-                        .def()
-                        .about(
-                            "Sign the transaction with the keypair of the \
-                             public key of the given address.",
-                        )
-                        .conflicts_with(SIGNING_KEY_OPT.name),
-                )
         }
     }
 
@@ -1136,7 +1109,8 @@ pub mod args {
             app.add_args::<Tx>()
                 .arg(SOURCE.def().about(
                     "The source account address. The source's key is used to \
-                     produce the signature.",
+                     produce the signature, unless `--signing-key` or \
+                     `--signer` is specified.",
                 ))
                 .arg(TARGET.def().about("The target account address."))
                 .arg(TOKEN.def().about("The transfer token."))
@@ -1149,8 +1123,6 @@ pub mod args {
     pub struct TxInitAccount {
         /// Common tx arguments
         pub tx: Tx,
-        /// Address of the source account
-        pub source: Address,
         /// Path to the VP WASM code file for the new account
         pub vp_code_path: Option<PathBuf>,
         /// Public key for the new account
@@ -1160,12 +1132,10 @@ pub mod args {
     impl Args for TxInitAccount {
         fn parse(ctx: &Context, matches: &ArgMatches) -> Self {
             let tx = Tx::parse(ctx, matches);
-            let source = SOURCE.parse(ctx, matches);
             let vp_code_path = CODE_PATH_OPT.parse(ctx, matches);
             let public_key = PUBLIC_KEY.parse(ctx, matches);
             Self {
                 tx,
-                source,
                 vp_code_path,
                 public_key,
             }
@@ -1173,9 +1143,6 @@ pub mod args {
 
         fn def(app: App) -> App {
             app.add_args::<Tx>()
-                .arg(SOURCE.def().about(
-                    "The source account's address that signs the transaction.",
-                ))
                 .arg(CODE_PATH_OPT.def().about(
                     "The path to the validity predicate WASM code to be used \
                      for the new account. Uses the default user VP if none \
@@ -1220,7 +1187,8 @@ pub mod args {
                 )
                 .arg(ADDRESS.def().about(
                     "The account's address. It's key is used to produce the \
-                     signature.",
+                     signature, unless `--signing-key` or `--signer` is \
+                     specified.",
                 ))
         }
     }
@@ -1717,6 +1685,10 @@ pub mod args {
         /// If any new account is initialized by the tx, use the given alias to
         /// save it in the wallet.
         pub initialized_account_alias: Option<String>,
+        /// Sign the tx with the key for the given alias from your wallet
+        pub signing_key: Option<LazyWalletKeypair>,
+        /// Sign the tx with the keypair of the public key of the given address
+        pub signer: Option<Address>,
     }
 
     impl Args for Tx {
@@ -1733,16 +1705,39 @@ pub mod args {
                  initialized, the alias will be the prefix of each new \
                  address joined with a number",
             ))
+            .arg(
+                SIGNING_KEY_OPT
+                    .def()
+                    .about(
+                        "Sign the transaction with the key for the given \
+                         public key, public key hash or alias from your \
+                         wallet.",
+                    )
+                    .conflicts_with(SIGNER.name),
+            )
+            .arg(
+                SIGNER
+                    .def()
+                    .about(
+                        "Sign the transaction with the keypair of the public \
+                         key of the given address.",
+                    )
+                    .conflicts_with(SIGNING_KEY_OPT.name),
+            )
         }
 
         fn parse(ctx: &Context, matches: &ArgMatches) -> Self {
             let dry_run = DRY_RUN_TX.parse(matches);
             let ledger_address = LEDGER_ADDRESS_DEFAULT.parse(ctx, matches);
             let initialized_account_alias = ALIAS_OPT.parse(ctx, matches);
+            let signing_key = SIGNING_KEY_OPT.parse(ctx, matches);
+            let signer = SIGNER.parse(ctx, matches);
             Self {
                 dry_run,
                 ledger_address,
                 initialized_account_alias,
+                signing_key,
+                signer,
             }
         }
     }
