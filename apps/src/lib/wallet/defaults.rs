@@ -8,12 +8,7 @@ use super::store::Alias;
 
 /// The default keys with their aliases.
 pub fn keys() -> Vec<(Alias, Keypair)> {
-    vec![
-        ("Albert".into(), albert_keypair()),
-        ("Bertha".into(), bertha_keypair()),
-        ("Christel".into(), christel_keypair()),
-        ("matchmaker".into(), matchmaker_keypair()),
-    ]
+    vec![("matchmaker".into(), matchmaker_keypair())]
 }
 
 /// The default addresses with their aliases.
