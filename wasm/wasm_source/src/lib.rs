@@ -1,6 +1,9 @@
 #[cfg(feature = "mm_token_exch")]
 pub mod mm_token_exch;
 
+#[cfg(feature = "vp_fountain")]
+pub mod vp_fountain;
+
 #[cfg(feature = "vp_user")]
 pub mod vp_user;
 

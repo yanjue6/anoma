@@ -14,6 +14,7 @@ wasms += tx_transfer
 wasms += tx_unbond
 wasms += tx_update_vp
 wasms += tx_withdraw
+wasms += vp_fountain
 wasms += vp_token
 wasms += vp_user
 

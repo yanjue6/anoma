@@ -21,6 +21,7 @@ tx_transfer = []
 tx_unbond = []
 tx_update_vp = []
 tx_withdraw = []
+vp_fountain = []
 vp_token = []
 vp_user = ["rust_decimal"]
 
