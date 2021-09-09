@@ -1,4 +1,4 @@
-//! Allows to take up to 100 tokens in a single tx without a sig
+//! Allows to take up to 1000 tokens in a single tx without a sig
 
 use anoma_vm_env::vp_prelude::key::ed25519::SignedTxData;
 use anoma_vm_env::vp_prelude::*;
@@ -55,8 +55,8 @@ fn validate_tx(
                 let change = post.change() - pre.change();
                 if owner == &addr {
                     // debit has to signed, credit doesn't
-                    // allow debit for up to 100 tokens in a single tx
-                    let valid = !(change < 0 && !valid_sig) || change >= -100_000_000;
+                    // allow debit for up to 1000 tokens in a single tx
+                    let valid = !(change < 0 && !valid_sig) || change >= -1_000_000_000;
                     log_string(format!(
                         "token key: {}, change: {}, transfer_valid_sig: {}, \
                          valid modification: {}",
