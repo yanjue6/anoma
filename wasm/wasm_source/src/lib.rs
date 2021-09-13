@@ -7,6 +7,9 @@ pub mod vp_fountain;
 #[cfg(feature = "vp_user")]
 pub mod vp_user;
 
+#[cfg(feature = "vp_user_2")]
+pub mod vp_user_2;
+
 /// A tx to initialize a new established address with a given public key and
 /// a validity predicate.
 #[cfg(feature = "tx_init_account")]

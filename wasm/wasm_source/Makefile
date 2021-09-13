@@ -17,6 +17,7 @@ wasms += tx_withdraw
 wasms += vp_fountain
 wasms += vp_token
 wasms += vp_user
+wasms += vp_user_2
 
 # Build all wasms
 all: $(wasms)
