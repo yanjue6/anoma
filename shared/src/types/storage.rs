@@ -1,6 +1,9 @@
 //! Storage types
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
+use std::num::ParseIntError;
+use std::ops::Add;
+use std::str::FromStr;
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
@@ -43,6 +46,7 @@ pub const RESERVED_VP_KEY: &str = "?";
 
 /// Height of a block, i.e. the level.
 #[derive(
+    Default,
     Clone,
     Copy,
     BorshSerialize,
@@ -51,11 +55,32 @@ pub const RESERVED_VP_KEY: &str = "?";
     Eq,
     PartialOrd,
     Ord,
+    Hash,
     Debug,
     Serialize,
     Deserialize,
 )]
 pub struct BlockHeight(pub u64);
+
+impl Display for BlockHeight {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Add<u64> for BlockHeight {
+    type Output = BlockHeight;
+
+    fn add(self, rhs: u64) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
+impl From<BlockHeight> for u64 {
+    fn from(height: BlockHeight) -> Self {
+        height.0
+    }
+}
 
 /// Hash of a block as fixed-size byte array
 #[derive(
@@ -66,6 +91,7 @@ pub struct BlockHeight(pub u64);
     Eq,
     PartialOrd,
     Ord,
+    Hash,
     Serialize,
     Deserialize,
 )]
@@ -213,10 +239,52 @@ impl Key {
 
     /// Returns a key of the validity predicate of the given address
     /// Only this function can push "?" segment for validity predicate
-    pub fn validity_predicate(addr: &Address) -> Result<Self> {
+    pub fn validity_predicate(addr: &Address) -> Self {
         let mut segments = Self::from(addr.to_db_key()).segments;
         segments.push(DbKeySeg::StringSeg(RESERVED_VP_KEY.to_owned()));
-        Ok(Key { segments })
+        Key { segments }
+    }
+
+    /// Check if the given key is a key to a validity predicate. If it is,
+    /// returns the address of the account.
+    pub fn is_validity_predicate(&self) -> Option<&Address> {
+        match &self.segments[..] {
+            [DbKeySeg::AddressSeg(address), DbKeySeg::StringSeg(sub_key)]
+                if sub_key == RESERVED_VP_KEY =>
+            {
+                Some(address)
+            }
+            _ => None,
+        }
+    }
+
+    /// Returns a key from the given DB key path that has the height and
+    /// the space type
+    pub fn parse_db_key(db_key: &str) -> Result<Self> {
+        let mut segments: Vec<&str> =
+            db_key.split(KEY_SEGMENT_SEPARATOR).collect();
+        let key = match segments.get(3) {
+            Some(seg) if *seg == RESERVED_VP_KEY => {
+                // the path of a validity predicate should be
+                // height/subspace/{address}/?
+                let mut addr_str =
+                    (*segments.get(2).expect("the address not found"))
+                        .to_owned();
+                let _ = addr_str.remove(0);
+                let addr = Address::decode(&addr_str)
+                    .expect("cannot decode the address");
+                Self::validity_predicate(&addr)
+            }
+            _ => Self::parse(
+                segments
+                    .split_off(2)
+                    .join(&KEY_SEGMENT_SEPARATOR.to_string()),
+            )
+            .map_err(|e| Error::Temporary {
+                error: format!("Cannot parse key segments {}: {}", db_key, e),
+            })?,
+        };
+        Ok(key)
     }
 }
 
@@ -356,6 +424,140 @@ impl KeySeg for Address {
     }
 }
 
+/// Epoch identifier. Epochs are identified by consecutive numbers.
+#[derive(
+    Clone,
+    Copy,
+    Default,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    BorshSerialize,
+    BorshDeserialize,
+    Serialize,
+    Deserialize,
+)]
+pub struct Epoch(pub u64);
+
+impl Display for Epoch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for Epoch {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let raw: u64 = u64::from_str(s)?;
+        Ok(Self(raw))
+    }
+}
+
+impl Epoch {
+    /// Change to the next epoch
+    pub fn next(&self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+impl Add<u64> for Epoch {
+    type Output = Epoch;
+
+    fn add(self, rhs: u64) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
+impl From<Epoch> for u64 {
+    fn from(epoch: Epoch) -> Self {
+        epoch.0
+    }
+}
+
+/// Predecessor block epochs
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    BorshSerialize,
+    BorshDeserialize,
+)]
+pub struct Epochs {
+    /// The oldest epoch we can look-up.
+    first_known_epoch: Epoch,
+    /// The block heights of the first block of each known epoch.
+    /// Invariant: the values must be sorted in ascending order.
+    first_block_heights: Vec<BlockHeight>,
+}
+
+impl Default for Epochs {
+    /// Initialize predecessor epochs, assuming starting on the epoch 0 and
+    /// block height 0.
+    fn default() -> Self {
+        Self {
+            first_known_epoch: Epoch::default(),
+            first_block_heights: vec![BlockHeight::default()],
+        }
+    }
+}
+
+impl Epochs {
+    /// Record start of a new epoch at the given block height and trim any
+    /// epochs that ended more than `max_age_num_blocks` ago.
+    pub fn new_epoch(
+        &mut self,
+        block_height: BlockHeight,
+        max_age_num_blocks: u64,
+    ) {
+        let min_block_height_to_keep = (block_height.0 + 1)
+            .checked_sub(max_age_num_blocks)
+            .unwrap_or_default();
+        // trim off any epochs whose last block is before the limit
+        while let Some((_first_known_epoch_height, rest)) =
+            self.first_block_heights.split_first()
+        {
+            if let Some(second_known_epoch_height) = rest.first() {
+                if second_known_epoch_height.0 < min_block_height_to_keep {
+                    self.first_known_epoch = self.first_known_epoch.next();
+                    self.first_block_heights = rest.to_vec();
+                    continue;
+                }
+            }
+            break;
+        }
+        self.first_block_heights.push(block_height);
+    }
+
+    /// Look-up the epoch of a given block height.
+    pub fn get_epoch(&self, block_height: BlockHeight) -> Option<Epoch> {
+        if let Some((first_known_epoch_height, rest)) =
+            self.first_block_heights.split_first()
+        {
+            if block_height < *first_known_epoch_height {
+                return None;
+            }
+            let mut epoch = self.first_known_epoch;
+            for next_block_height in rest {
+                if block_height < *next_block_height {
+                    return Some(epoch);
+                } else {
+                    epoch = epoch.next();
+                }
+            }
+            return Some(epoch);
+        }
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
@@ -443,6 +645,89 @@ mod tests {
             _ => panic!("unexpected error happens"),
         }
     }
+
+    #[test]
+    fn test_predecessor_epochs() {
+        let mut epochs = Epochs::default();
+        assert_eq!(epochs.get_epoch(BlockHeight(0)), Some(Epoch(0)));
+        let mut max_age_num_blocks = 100;
+
+        // epoch 1
+        epochs.new_epoch(BlockHeight(10), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(0)), Some(Epoch(0)));
+        assert_eq!(epochs.get_epoch(BlockHeight(9)), Some(Epoch(0)));
+        assert_eq!(epochs.get_epoch(BlockHeight(10)), Some(Epoch(1)));
+        assert_eq!(epochs.get_epoch(BlockHeight(11)), Some(Epoch(1)));
+        assert_eq!(epochs.get_epoch(BlockHeight(100)), Some(Epoch(1)));
+
+        // epoch 2
+        epochs.new_epoch(BlockHeight(20), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(0)), Some(Epoch(0)));
+        assert_eq!(epochs.get_epoch(BlockHeight(9)), Some(Epoch(0)));
+        assert_eq!(epochs.get_epoch(BlockHeight(10)), Some(Epoch(1)));
+        assert_eq!(epochs.get_epoch(BlockHeight(11)), Some(Epoch(1)));
+        assert_eq!(epochs.get_epoch(BlockHeight(20)), Some(Epoch(2)));
+        assert_eq!(epochs.get_epoch(BlockHeight(100)), Some(Epoch(2)));
+
+        // epoch 3, epoch 0 and 1 should be trimmed
+        epochs.new_epoch(BlockHeight(200), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(0)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(9)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(10)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(11)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(20)), Some(Epoch(2)));
+        assert_eq!(epochs.get_epoch(BlockHeight(100)), Some(Epoch(2)));
+        assert_eq!(epochs.get_epoch(BlockHeight(200)), Some(Epoch(3)));
+
+        // increase the limit
+        max_age_num_blocks = 200;
+
+        // epoch 4
+        epochs.new_epoch(BlockHeight(300), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(20)), Some(Epoch(2)));
+        assert_eq!(epochs.get_epoch(BlockHeight(100)), Some(Epoch(2)));
+        assert_eq!(epochs.get_epoch(BlockHeight(200)), Some(Epoch(3)));
+        assert_eq!(epochs.get_epoch(BlockHeight(300)), Some(Epoch(4)));
+
+        // epoch 5, epoch 2 should be trimmed
+        epochs.new_epoch(BlockHeight(499), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(20)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(100)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(200)), Some(Epoch(3)));
+        assert_eq!(epochs.get_epoch(BlockHeight(300)), Some(Epoch(4)));
+        assert_eq!(epochs.get_epoch(BlockHeight(499)), Some(Epoch(5)));
+
+        // epoch 6, epoch 3 should be trimmed
+        epochs.new_epoch(BlockHeight(500), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(200)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(300)), Some(Epoch(4)));
+        assert_eq!(epochs.get_epoch(BlockHeight(499)), Some(Epoch(5)));
+        assert_eq!(epochs.get_epoch(BlockHeight(500)), Some(Epoch(6)));
+
+        // decrease the limit
+        max_age_num_blocks = 50;
+
+        // epoch 7, epoch 4 and 5 should be trimmed
+        epochs.new_epoch(BlockHeight(550), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(300)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(499)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(500)), Some(Epoch(6)));
+        assert_eq!(epochs.get_epoch(BlockHeight(550)), Some(Epoch(7)));
+
+        // epoch 8, epoch 6 should be trimmed
+        epochs.new_epoch(BlockHeight(600), max_age_num_blocks);
+        println!("epochs {:#?}", epochs);
+        assert_eq!(epochs.get_epoch(BlockHeight(500)), None);
+        assert_eq!(epochs.get_epoch(BlockHeight(550)), Some(Epoch(7)));
+        assert_eq!(epochs.get_epoch(BlockHeight(600)), Some(Epoch(8)));
+    }
 }
 
 /// Helpers for testing with storage types.
@@ -458,12 +743,41 @@ pub mod testing {
     pub fn arb_key() -> impl Strategy<Value = Key> {
         prop_oneof![
             // a key for a validity predicate
-            arb_address()
-                .prop_map(|addr| Key::validity_predicate(&addr).unwrap()),
+            arb_address().prop_map(|addr| Key::validity_predicate(&addr)),
             // a key from key segments
-            collection::vec(arb_key_seg(), 1..5)
-                .prop_map(|segments| { Key { segments } }),
+            arb_key_no_vp(),
         ]
+    }
+
+    /// Generate an arbitrary [`Key`] other than a validity predicate key.
+    pub fn arb_key_no_vp() -> impl Strategy<Value = Key> {
+        // a key from key segments
+        collection::vec(arb_key_seg(), 1..5)
+            .prop_map(|segments| Key { segments })
+    }
+
+    /// Generate an arbitrary [`Key`] for a given address storage sub-space.
+    pub fn arb_account_storage_key(
+        address: Address,
+    ) -> impl Strategy<Value = Key> {
+        prop_oneof![
+            // a key for a validity predicate
+            Just(Key::validity_predicate(&address)),
+            // a key from key segments
+            arb_account_storage_key_no_vp(address),
+        ]
+    }
+
+    /// Generate an arbitrary [`Key`] other than a validity predicate key for a
+    /// given address storage sub-space.
+    pub fn arb_account_storage_key_no_vp(
+        address: Address,
+    ) -> impl Strategy<Value = Key> {
+        collection::vec(arb_key_seg(), 1..5).prop_map(move |arb_segments| {
+            let mut segments = vec![address.to_db_key()];
+            segments.extend(arb_segments);
+            Key { segments }
+        })
     }
 
     /// Generate an arbitrary [`DbKeySeg`].

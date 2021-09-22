@@ -7,12 +7,11 @@ use std::collections::HashMap;
 use std::fmt;
 use std::path::Path;
 
-use anoma_shared::ledger::storage::types::MerkleTree;
-use anoma_shared::ledger::storage::{
-    types, BlockStorage, Storage, StorageHasher,
-};
-use anoma_shared::types::address::EstablishedAddressGen;
-use anoma_shared::types::storage::{BlockHash, BlockHeight, Key};
+use anoma::ledger::storage::types::MerkleTree;
+use anoma::ledger::storage::{types, BlockStorage, Storage, StorageHasher};
+use anoma::types::address::EstablishedAddressGen;
+use anoma::types::storage::{BlockHash, BlockHeight, Epoch, Epochs, Key};
+use anoma::types::time::DateTimeUtc;
 use blake2b_rs::{Blake2b, Blake2bBuilder};
 use sparse_merkle_tree::blake2b::Blake2bHasher;
 use sparse_merkle_tree::traits::Hasher;
@@ -28,14 +27,20 @@ pub fn open(db_path: impl AsRef<Path>, chain_id: String) -> PersistentStorage {
     let block = BlockStorage {
         tree: MerkleTree::default(),
         hash: BlockHash::default(),
-        height: BlockHeight(0),
-        subspaces: HashMap::new(),
+        height: BlockHeight::default(),
+        epoch: Epoch::default(),
+        pred_epochs: Epochs::default(),
+        subspaces: HashMap::default(),
     };
     PersistentStorage {
         db: rocksdb::open(db_path).expect("cannot open the DB"),
         chain_id,
         block,
-        current_height: BlockHeight(0),
+        header: None,
+        last_height: BlockHeight(0),
+        last_epoch: Epoch::default(),
+        next_epoch_min_start_height: BlockHeight::default(),
+        next_epoch_min_start_time: DateTimeUtc::now(),
         address_gen: EstablishedAddressGen::new(
             "Privacy is a function of liberty.",
         ),
@@ -88,9 +93,7 @@ fn new_blake2b() -> Blake2b {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
-
-    use anoma_shared::ledger::storage::types;
+    use anoma::ledger::storage::types;
     use tempfile::TempDir;
 
     use super::*;
@@ -159,7 +162,7 @@ mod tests {
         storage.commit().expect("commit failed");
 
         // save the last state and drop the storage
-        let root = storage.merkle_root().as_slice().deref().to_vec();
+        let root = storage.merkle_root().0;
         let hash = storage.get_block_hash().0;
         let address_gen = storage.address_gen.clone();
         drop(storage);
@@ -229,8 +232,7 @@ mod tests {
             .expect("begin_block failed");
 
         let addr = storage.address_gen.generate_address("test".as_bytes());
-        let key =
-            Key::validity_predicate(&addr).expect("cannot create a VP key");
+        let key = Key::validity_predicate(&addr);
 
         // not exist
         let (vp, gas) =

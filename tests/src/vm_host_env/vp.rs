@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
-use anoma_shared::ledger::gas::VpGasMeter;
-use anoma_shared::ledger::storage::mockdb::MockDB;
-use anoma_shared::ledger::storage::testing::TestStorage;
-use anoma_shared::ledger::storage::write_log::WriteLog;
-use anoma_shared::proto::Tx;
-use anoma_shared::types::address::{self, Address};
-use anoma_shared::types::storage::{self, Key};
-use anoma_shared::vm;
-use anoma_shared::vm::prefix_iter::PrefixIterators;
+use anoma::ledger::gas::VpGasMeter;
+use anoma::ledger::storage::mockdb::MockDB;
+use anoma::ledger::storage::testing::TestStorage;
+use anoma::ledger::storage::write_log::WriteLog;
+use anoma::proto::Tx;
+use anoma::types::address::{self, Address};
+use anoma::types::storage::{self, Key};
+use anoma::vm;
+use anoma::vm::prefix_iter::PrefixIterators;
 
 use crate::tx::{init_tx_env, TestTxEnv};
 
@@ -17,7 +17,7 @@ use crate::tx::{init_tx_env, TestTxEnv};
 /// that will call to the native functions, instead of interfacing via a
 /// wasm runtime. It can be used for host environment integration tests.
 pub mod vp_host_env {
-    pub use anoma_vm_env::imports::vp::*;
+    pub use anoma_vm_env::vp_prelude::*;
 
     pub use super::native_vp_host_env::*;
 }
@@ -39,7 +39,7 @@ pub struct TestVpEnv {
 impl Default for TestVpEnv {
     fn default() -> Self {
         #[cfg(feature = "wasm-runtime")]
-        let eval_runner = anoma_shared::vm::wasm::run::VpEvalWasm::default();
+        let eval_runner = anoma::vm::wasm::run::VpEvalWasm::default();
         #[cfg(not(feature = "wasm-runtime"))]
         let eval_runner = native_vp_host_env::VpEval;
 
@@ -58,21 +58,24 @@ impl Default for TestVpEnv {
     }
 }
 
+impl TestVpEnv {
+    pub fn all_touched_storage_keys(&self) -> HashSet<Key> {
+        self.write_log.get_keys()
+    }
+}
+
 /// Initialize the host environment inside the [`vp_host_env`] module by running
-/// a transaction. The transaction is expected to modify the given address
-/// `addr` or to add it to the set of verifiers using
+/// a transaction. The transaction is expected to modify the storage sub-space
+/// of the given address `addr` or to add it to the set of verifiers using
 /// [`super::tx::tx_host_env::insert_verifier`].
-pub fn init_vp_env_from_tx<F>(
+pub fn init_vp_env_from_tx(
     addr: Address,
     mut tx_env: TestTxEnv,
-    mut apply_tx: F,
-) -> TestVpEnv
-where
-    F: FnMut(&Address),
-{
+    mut apply_tx: impl FnMut(&Address),
+) -> TestVpEnv {
     // Write an empty validity predicate for the address, because it's used to
     // check if the address exists when we write into its storage
-    let vp_key = Key::validity_predicate(&addr).unwrap();
+    let vp_key = Key::validity_predicate(&addr);
     tx_env.storage.write(&vp_key, vec![]).unwrap();
 
     init_tx_env(&mut tx_env);
@@ -144,17 +147,16 @@ mod native_vp_host_env {
 
     use std::cell::RefCell;
 
-    use anoma_shared::ledger::storage::testing::Sha256Hasher;
-    use anoma_shared::vm::host_env::*;
-    use anoma_shared::vm::memory::testing::NativeMemory;
+    use anoma::ledger::storage::testing::Sha256Hasher;
+    use anoma::vm::host_env::*;
+    use anoma::vm::memory::testing::NativeMemory;
     // TODO replace with `std::concat_idents` once stabilized (https://github.com/rust-lang/rust/issues/29599)
     use concat_idents::concat_idents;
 
     use super::*;
 
     #[cfg(feature = "wasm-runtime")]
-    pub type VpEval =
-        anoma_shared::vm::wasm::run::VpEvalWasm<MockDB, Sha256Hasher>;
+    pub type VpEval = anoma::vm::wasm::run::VpEvalWasm<MockDB, Sha256Hasher>;
     #[cfg(not(feature = "wasm-runtime"))]
     pub struct VpEval;
 
@@ -173,7 +175,7 @@ mod native_vp_host_env {
             _ctx: VpCtx<'static, Self::Db, Self::H, Self::Eval>,
             _vp_code: Vec<u8>,
             _input_data: Vec<u8>,
-        ) -> anoma_shared::types::internal::HostEnvResult {
+        ) -> anoma::types::internal::HostEnvResult {
             unimplemented!(
                 "The \"wasm-runtime\" feature must be enabled to test with \
                  the `eval` function."
@@ -195,7 +197,9 @@ mod native_vp_host_env {
                             let env = env.as_ref().expect("Did you forget to
     initialize the ENV?");
 
-                            $fn( &env, $($arg),* )
+                            // Call the `host_env` function and unwrap any
+                            // runtime errors
+                            $fn( &env, $($arg),* ).unwrap()
                         })
                     }
                 });
@@ -211,7 +215,9 @@ mod native_vp_host_env {
                             let env = env.as_ref().expect("Did you forget to
     initialize the ENV?");
 
-                            $fn( &env, $($arg),* )
+                            // Call the `host_env` function and unwrap any
+                            // runtime errors
+                            $fn( &env, $($arg),* ).unwrap()
                         })
                     }
                 });
@@ -231,6 +237,7 @@ mod native_vp_host_env {
     native_host_fn!(vp_get_chain_id(result_ptr: u64));
     native_host_fn!(vp_get_block_height() -> u64);
     native_host_fn!(vp_get_block_hash(result_ptr: u64));
+    native_host_fn!(vp_get_block_epoch() -> u64);
     native_host_fn!(vp_verify_tx_signature(
             pk_ptr: u64,
             pk_len: u64,

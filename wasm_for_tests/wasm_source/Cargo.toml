@@ -2,7 +2,7 @@
 authors = ["Heliax AG <hello@heliax.dev>"]
 edition = "2018"
 license = "GPL-3.0"
-name = "wasm_source"
+name = "anoma_wasm_for_tests"
 resolver = "2"
 version = "0.1.0"
 
@@ -13,6 +13,7 @@ crate-type = ["cdylib"]
 # Newly added wasms should also be added into the Makefile `$(wasms)` list.
 [features]
 tx_memory_limit = []
+tx_mint_tokens = []
 tx_no_op = []
 tx_read_storage_key = []
 vp_always_false = []

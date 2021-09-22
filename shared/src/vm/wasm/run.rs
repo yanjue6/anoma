@@ -2,7 +2,6 @@
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
-use std::sync::{Arc, Mutex};
 
 use parity_wasm::elements;
 use pwasm_utils::{self, rules};
@@ -21,11 +20,11 @@ use crate::types::storage::Key;
 use crate::vm::host_env::{TxEnv, VpCtx, VpEnv, VpEvaluator};
 use crate::vm::prefix_iter::PrefixIterators;
 use crate::vm::types::VpInput;
-use crate::vm::validate_untrusted_wasm;
 use crate::vm::wasm::host_env::{
     mm_filter_imports, mm_imports, tx_imports, vp_imports,
 };
 use crate::vm::wasm::memory;
+use crate::vm::{validate_untrusted_wasm, WasmValidationError};
 
 const TX_ENTRYPOINT: &str = "_apply_tx";
 const VP_ENTRYPOINT: &str = "_validate_tx";
@@ -36,7 +35,6 @@ const WASM_STACK_LIMIT: u32 = u16::MAX as u32;
 #[allow(missing_docs)]
 #[derive(Error, Debug)]
 pub enum Error {
-    // 1. Common error types
     #[error("Memory error: {0}")]
     MemoryError(memory::Error),
     #[error("Unable to inject gas meter")]
@@ -66,7 +64,7 @@ pub enum Error {
         error: wasmer::RuntimeError,
     },
     #[error("Wasm validation error: {0}")]
-    ValidationError(wasmparser::BinaryReaderError),
+    ValidationError(WasmValidationError),
 }
 
 /// Result for functions that may fail
@@ -78,8 +76,8 @@ pub fn tx<DB, H>(
     storage: &Storage<DB, H>,
     write_log: &mut WriteLog,
     gas_meter: &mut BlockGasMeter,
-    tx_code: Vec<u8>,
-    tx_data: Vec<u8>,
+    tx_code: impl AsRef<[u8]>,
+    tx_data: impl AsRef<[u8]>,
 ) -> Result<HashSet<Address>>
 where
     DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
@@ -103,7 +101,7 @@ where
         &mut result_buffer,
     );
 
-    let tx_code = prepare_wasm_code(&tx_code)?;
+    let tx_code = prepare_wasm_code(tx_code)?;
 
     let initial_memory =
         memory::prepare_tx_memory(&wasm_store).map_err(Error::MemoryError)?;
@@ -362,7 +360,7 @@ pub fn matchmaker<MM>(
     data: impl AsRef<[u8]>,
     intent_id: impl AsRef<[u8]>,
     intent_data: impl AsRef<[u8]>,
-    mm: Arc<Mutex<MM>>,
+    mm: MM,
 ) -> Result<bool>
 where
     MM: 'static + MmHost,
@@ -395,7 +393,7 @@ where
         intent_data_ptr,
         intent_data_len,
     }: memory::MatchmakerCallInput =
-        memory::write_matchmaker_inputs(&memory, data, intent_id, intent_data)
+        memory::write_matchmaker_inputs(memory, data, intent_id, intent_data)
             .map_err(Error::MemoryError)?;
     let apply_matchmaker = instance
         .exports
@@ -449,7 +447,7 @@ pub fn matchmaker_filter(
         intent_data_ptr,
         intent_data_len,
     }: memory::FilterCallInput =
-        memory::write_filter_inputs(&memory, intent_data)
+        memory::write_filter_inputs(memory, intent_data)
             .map_err(Error::MemoryError)?;
     let apply_filter = instance
         .exports

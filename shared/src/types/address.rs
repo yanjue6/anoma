@@ -1,8 +1,10 @@
 //! Implements transparent addresses as described in [Accounts
-//! Addresses](tech-specs/src/explore/design/ledger/accounts.md#addresses).
+//! Addresses](docs/src/explore/design/ledger/accounts.md#addresses).
 
+use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+use std::str::FromStr;
 use std::string;
 
 use bech32::{self, FromBase32, ToBase32, Variant};
@@ -59,8 +61,6 @@ pub type Result<T> = std::result::Result<T, Error>;
     PartialOrd,
     Ord,
     Hash,
-    Serialize,
-    Deserialize,
 )]
 pub enum Address {
     /// An established address is generated on-chain
@@ -119,6 +119,18 @@ impl Address {
         Ok(address)
     }
 
+    /// Try to get a raw hash of an address, only defined for established and
+    /// implicit addresses.
+    pub fn raw_hash(&self) -> Option<&str> {
+        match self {
+            Address::Established(established) => Some(&established.hash),
+            Address::Implicit(ImplicitAddress::Ed25519(implicit)) => {
+                Some(&implicit.0)
+            }
+            Address::Internal(_) => None,
+        }
+    }
+
     fn pretty_fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Address::Established(_) => {
@@ -134,6 +146,30 @@ impl Address {
     }
 }
 
+impl serde::Serialize for Address {
+    fn serialize<S>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let encoded = self.encode();
+        serde::Serialize::serialize(&encoded, serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Address {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+        let encoded: String = serde::Deserialize::deserialize(deserializer)?;
+        Self::decode(encoded).map_err(D::Error::custom)
+    }
+}
+
 impl Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.pretty_fmt(f)
@@ -143,6 +179,14 @@ impl Display for Address {
 impl Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.pretty_fmt(f)
+    }
+}
+
+impl FromStr for Address {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Address::decode(s)
     }
 }
 
@@ -217,6 +261,18 @@ pub enum ImplicitAddress {
     Ed25519(key::ed25519::PublicKeyHash),
 }
 
+impl From<&key::ed25519::PublicKey> for ImplicitAddress {
+    fn from(pk: &key::ed25519::PublicKey) -> Self {
+        ImplicitAddress::Ed25519(pk.into())
+    }
+}
+
+impl From<&key::ed25519::PublicKey> for Address {
+    fn from(pk: &key::ed25519::PublicKey) -> Self {
+        Self::Implicit(pk.into())
+    }
+}
+
 /// An internal address represents a module with a native VP
 #[derive(
     Debug,
@@ -234,8 +290,12 @@ pub enum ImplicitAddress {
 pub enum InternalAddress {
     /// Proof-of-stake
     PoS,
+    /// Proof-of-stake slash pool contains slashed tokens
+    PosSlashPool,
     /// Inter-blockchain communication
     Ibc,
+    /// Protocol parameters
+    Parameters,
 }
 
 impl Display for InternalAddress {
@@ -245,7 +305,9 @@ impl Display for InternalAddress {
             "{}",
             match self {
                 Self::PoS => "PoS",
+                Self::PosSlashPool => "PosSlashPool",
                 Self::Ibc => "IBC",
+                Self::Parameters => "Parameters",
             }
         )
     }
@@ -286,22 +348,68 @@ pub fn kartoffel() -> Address {
     Address::decode("a1qq5qqqqqxs6yvsekxuuyy3pjxsmrgd2rxuungdzpgsmyydjrxsenjdp5xaqn233sgccnjs3eak5wwh").expect("The token address decoding shouldn't fail")
 }
 
-/// Temporary helper for testing
-pub fn matchmaker() -> Address {
-    Address::decode("a1qq5qqqqqxu6rvdzpxymnqwfkxfznvsjxggunyd3jg5erg3p3geqnvv35gep5yvzxx5m5x3fsfje8td").expect("The token address decoding shouldn't fail")
+/// Temporary helper for testing, a hash map of tokens addresses with their
+/// informal currency codes.
+pub fn tokens() -> HashMap<Address, &'static str> {
+    vec![
+        (xan(), "XAN"),
+        (btc(), "BTC"),
+        (eth(), "ETH"),
+        (dot(), "DOT"),
+        (schnitzel(), "Schnitzel"),
+        (apfel(), "Apfel"),
+        (kartoffel(), "Kartoffel"),
+    ]
+    .into_iter()
+    .collect()
 }
 
 #[cfg(test)]
 pub mod tests {
-    use rand::prelude::ThreadRng;
-    use rand::{thread_rng, RngCore};
-
     use super::*;
 
     /// Run `cargo test gen_established_address -- --nocapture` to generate a
     /// new established address.
     #[test]
-    fn gen_established_address() {
+    pub fn gen_established_address() {
+        let address = testing::gen_established_address();
+        println!("address {}", address);
+    }
+
+    #[test]
+    fn test_address_len() {
+        let addr = testing::established_address_1();
+        let bytes = addr.try_to_vec().unwrap();
+        assert_eq!(bytes.len(), RAW_ADDRESS_LEN);
+        assert_eq!(addr.encode().len(), ADDRESS_LEN);
+    }
+
+    #[test]
+    fn test_address_serde_serialize() {
+        let original_address = Address::decode("a1qq5qqqqqgcmyxd35xguy2wp5xsu5vs6pxqcy232pgvm5zs6yggunssfs89znv33h8q6rjde4cjc3dr").unwrap();
+        let expect =
+            "\"a1qq5qqqqqgcmyxd35xguy2wp5xsu5vs6pxqcy232pgvm5zs6yggunssfs89znv33h8q6rjde4cjc3dr\"";
+        let decoded_address: Address =
+            serde_json::from_str(expect).expect("could not read JSON");
+        assert_eq!(original_address, decoded_address);
+
+        let encoded_address = serde_json::to_string(&original_address).unwrap();
+        assert_eq!(encoded_address, expect);
+    }
+}
+
+/// Helpers for testing with addresses.
+#[cfg(any(test, feature = "testing"))]
+pub mod testing {
+    use proptest::prelude::*;
+    use rand::prelude::ThreadRng;
+    use rand::{thread_rng, RngCore};
+
+    use super::*;
+    use crate::types::key::ed25519;
+
+    /// Generate a new established address.
+    pub fn gen_established_address() -> Address {
         let seed = "such randomness, much wow";
         let mut key_gen = EstablishedAddressGen::new(seed);
 
@@ -313,26 +421,8 @@ pub mod tests {
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<String>>()
             .join("");
-        let address = key_gen.generate_address(rng_source);
-        println!("address {}", address);
+        key_gen.generate_address(rng_source)
     }
-
-    #[test]
-    fn test_address_len() {
-        let addr = testing::established_address_1();
-        let bytes = addr.try_to_vec().unwrap();
-        assert_eq!(bytes.len(), RAW_ADDRESS_LEN);
-        assert_eq!(addr.encode().len(), ADDRESS_LEN);
-    }
-}
-
-/// Helpers for testing with addresses.
-#[cfg(any(test, feature = "testing"))]
-pub mod testing {
-    use proptest::prelude::*;
-
-    use super::*;
-    use crate::types::key::ed25519;
 
     /// A sampled established address for tests
     pub fn established_address_1() -> Address {
@@ -344,7 +434,17 @@ pub mod testing {
         Address::decode("a1qq5qqqqqgcuyxv2pxgcrzdecx4prq3pexccr2vj9xse5gvf3gvmnv3f3xqcyyvjyxv6yvv34e393x7").expect("The token address decoding shouldn't fail")
     }
 
-    /// Generate an arbitrary [`Address`].
+    /// A sampled established address for tests
+    pub fn established_address_3() -> Address {
+        Address::decode("a1qq5qqqqq8pp52dfjxserjwf3g9znzveng9zy2wfcx5cnxs6zxq6nydek8qcrqdjrxucrws3jcq9z7a").expect("The token address decoding shouldn't fail")
+    }
+
+    /// A sampled established address for tests
+    pub fn established_address_4() -> Address {
+        Address::decode("a1qq5qqqqqg56yxdpeg5er2d69g4rrxv2rxdryxdes8yenwvejxpzrvd6r8qcnjsjpxg6nww2r3zt5ax").expect("The token address decoding shouldn't fail")
+    }
+
+    /// Generate an arbitrary [`Address`] (established or implicit).
     pub fn arb_address() -> impl Strategy<Value = Address> {
         prop_oneof![
             arb_established_address().prop_map(Address::Established),
@@ -372,8 +472,7 @@ pub mod testing {
     /// Generate an arbitrary [`ImplicitAddress`].
     pub fn arb_implicit_address() -> impl Strategy<Value = ImplicitAddress> {
         ed25519::testing::arb_keypair().prop_map(|keypair| {
-            let pk = ed25519::PublicKey::from(keypair.public);
-            let pkh = ed25519::PublicKeyHash::from(pk);
+            let pkh = ed25519::PublicKeyHash::from(keypair.public);
             ImplicitAddress::Ed25519(pkh)
         })
     }

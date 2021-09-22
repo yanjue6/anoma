@@ -1,33 +1,47 @@
-use std::sync::{Arc, Mutex};
+use std::rc::Rc;
 
-use anoma_shared::gossip::mm::MmHost;
-use anoma_shared::proto::{Intent, IntentId, Tx};
-use anoma_shared::vm::wasm;
+use anoma::gossip::mm::MmHost;
+use anoma::proto::{Intent, IntentId, Tx};
+use anoma::types::address::Address;
+use anoma::types::intent::{IntentTransfers, MatchedExchanges};
+use anoma::types::key::ed25519::Keypair;
+use anoma::vm::wasm;
+use borsh::{BorshDeserialize, BorshSerialize};
 use tendermint::net;
-use tendermint_rpc::{Client, HttpClient};
 use thiserror::Error;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use super::filter::Filter;
 use super::mempool::{self, IntentMempool};
+use crate::client::tx::broadcast_tx;
+use crate::config;
 use crate::types::MatchmakerMessage;
-use crate::{config, wallet};
 
+/// A matchmaker receive intents and tries to find a match with previously
+/// received intent.
 #[derive(Debug)]
 pub struct Matchmaker {
+    /// All valid and received intent are saved in this mempool
     mempool: IntentMempool,
+    /// Possible filter that filter any received intent.
     filter: Option<Filter>,
     matchmaker_code: Vec<u8>,
+    /// The code of the transaction that is going to be send to a ledger.
     tx_code: Vec<u8>,
-    // the matchmaker's state as arbitrary bytes
-    data: Vec<u8>,
+    /// the matchmaker's state as arbitrary bytes
+    state: Vec<u8>,
+    /// The ledger address to send any crafted transaction to
     ledger_address: net::Address,
-    // TODO this doesn't have to be a mutex as it's just a Sender which is
-    // thread-safe
-    wasm_host: Arc<Mutex<WasmHost>>,
+    /// The WASM host allows the WASM runtime to send messages back to this
+    /// matchmaker
+    wasm_host: WasmHost,
+    /// A source address for transactions created from intents.
+    tx_source_address: Address,
+    /// A keypair that will be used to sign transactions.
+    tx_signing_key: Rc<Keypair>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct WasmHost(Sender<MatchmakerMessage>);
 
 #[derive(Error, Debug)]
@@ -47,30 +61,39 @@ pub enum Error {
 type Result<T> = std::result::Result<T, Error>;
 
 impl MmHost for WasmHost {
+    /// Send a message from the guest program to remove value from the mempool
     fn remove_intents(&self, intents_id: std::collections::HashSet<Vec<u8>>) {
         self.0
             .try_send(MatchmakerMessage::RemoveIntents(intents_id))
             .expect("Sending matchmaker message")
     }
 
+    /// Send a message from the guest program to inject a new transaction to the
+    /// ledger
     fn inject_tx(&self, tx_data: Vec<u8>) {
         self.0
             .try_send(MatchmakerMessage::InjectTx(tx_data))
             .expect("Sending matchmaker message")
     }
 
-    fn update_data(&self, data: Vec<u8>) {
+    /// Send a message from the guest program to update the matchmaker state
+    fn update_state(&self, state: Vec<u8>) {
         self.0
-            .try_send(MatchmakerMessage::UpdateData(data))
+            .try_send(MatchmakerMessage::UpdateState(state))
             .expect("Sending matchmaker message")
     }
 }
 
 impl Matchmaker {
+    /// Create a new matchmaker based on the parameter config.
     pub fn new(
         config: &config::Matchmaker,
-    ) -> Result<(Self, Receiver<MatchmakerMessage>)> {
-        let (inject_mm_message, receiver_mm_message) = channel(100);
+        tx_source_address: Address,
+        tx_signing_key: Rc<Keypair>,
+    ) -> Result<(Self, Sender<MatchmakerMessage>, Receiver<MatchmakerMessage>)>
+    {
+        // TODO: find a good number or maybe unlimited channel ?
+        let (sender, receiver) = channel(100);
         let matchmaker_code =
             std::fs::read(&config.matchmaker).map_err(Error::FileFailed)?;
         let tx_code =
@@ -88,15 +111,18 @@ impl Matchmaker {
                 filter,
                 matchmaker_code,
                 tx_code,
-                data: Vec::new(),
+                state: Vec::new(),
                 ledger_address: config.ledger_address.clone(),
-                wasm_host: Arc::new(Mutex::new(WasmHost(inject_mm_message))),
+                wasm_host: WasmHost(sender.clone()),
+                tx_source_address,
+                tx_signing_key,
             },
-            receiver_mm_message,
+            sender,
+            receiver,
         ))
     }
 
-    // returns true if no filter is define for that matchmaker
+    /// Tries to apply the filter or returns true if no filter is define
     fn apply_filter(&self, intent: &Intent) -> Result<bool> {
         self.filter
             .as_ref()
@@ -106,8 +132,8 @@ impl Matchmaker {
             .map_err(Error::Filter)
     }
 
-    // add the intent to the matchmaker mempool and tries to find a match for
-    // that intent
+    /// add the intent to the matchmaker mempool and tries to find a match for
+    /// that intent
     pub fn try_match_intent(&mut self, intent: &Intent) -> Result<bool> {
         if self.apply_filter(intent)? {
             self.mempool
@@ -115,7 +141,7 @@ impl Matchmaker {
                 .map_err(Error::MempoolFailed)?;
             Ok(wasm::run::matchmaker(
                 &self.matchmaker_code.clone(),
-                &self.data,
+                &self.state,
                 &intent.id().0,
                 &intent.data,
                 self.wasm_host.clone(),
@@ -131,23 +157,59 @@ impl Matchmaker {
         match mm_message {
             MatchmakerMessage::InjectTx(tx_data) => {
                 let tx_code = self.tx_code.clone();
-                let keypair = wallet::matchmaker_keypair();
-                let tx = Tx::new(tx_code, Some(tx_data)).sign(&keypair);
+                let matches =
+                    MatchedExchanges::try_from_slice(&tx_data[..]).unwrap();
+                let intent_transfers = IntentTransfers {
+                    matches,
+                    source: self.tx_source_address.clone(),
+                };
+                let tx_data = intent_transfers.try_to_vec().unwrap();
+                let tx =
+                    Tx::new(tx_code, Some(tx_data)).sign(&self.tx_signing_key);
                 let tx_bytes = tx.to_bytes();
 
-                let client =
-                    HttpClient::new(self.ledger_address.clone()).unwrap();
                 let response =
-                    client.broadcast_tx_commit(tx_bytes.into()).await;
-                println!("{:#?}", response);
+                    broadcast_tx(self.ledger_address.clone(), tx_bytes).await;
+                match response {
+                    Ok(tx_response) => {
+                        tracing::info!(
+                            "Injected transaction from matchmaker with \
+                             result: {:#?}",
+                            tx_response
+                        );
+                    }
+                    Err(err) => {
+                        tracing::error!(
+                            "Matchmaker error in submitting a transaction to \
+                             the ledger: {}",
+                            err
+                        );
+                    }
+                }
             }
             MatchmakerMessage::RemoveIntents(intents_id) => {
                 intents_id.into_iter().for_each(|intent_id| {
                     self.mempool.remove(&IntentId::from(intent_id));
                 });
             }
-            MatchmakerMessage::UpdateData(mm_data) => {
-                self.data = mm_data;
+            MatchmakerMessage::UpdateState(mm_data) => {
+                self.state = mm_data;
+            }
+            MatchmakerMessage::ApplyIntent(intent, response_sender) => {
+                let result =
+                    self.try_match_intent(&intent).unwrap_or_else(|err| {
+                        tracing::error!(
+                            "Matchmaker error in applying intent {}",
+                            err
+                        );
+                        false
+                    });
+                response_sender.send(result).unwrap_or_else(|err| {
+                    tracing::error!(
+                        "Matchmaker error in sending back intent result {}",
+                        err
+                    )
+                });
             }
         }
     }

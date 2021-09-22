@@ -15,10 +15,10 @@ pub mod vp;
 
 #[cfg(test)]
 mod tests {
-    use anoma_shared::proto::Tx;
-    use anoma_shared::types::key::ed25519::SignedTxData;
-    use anoma_shared::types::storage::{Key, KeySeg};
-    use anoma_shared::types::{address, key};
+    use anoma::proto::Tx;
+    use anoma::types::key::ed25519::SignedTxData;
+    use anoma::types::storage::{Key, KeySeg};
+    use anoma::types::{address, key};
     use anoma_vm_env::tx_prelude::{
         BorshDeserialize, BorshSerialize, KeyValIterator,
     };
@@ -154,7 +154,7 @@ mod tests {
 
         assert!(env.verifiers.is_empty(), "pre-condition");
         let verifier = address::testing::established_address_1();
-        tx_host_env::insert_verifier(verifier.clone());
+        tx_host_env::insert_verifier(&verifier);
         assert!(
             env.verifiers.contains(&verifier),
             "The verifier should have been inserted"
@@ -203,6 +203,10 @@ mod tests {
             tx_host_env::get_block_hash(),
             env.storage.get_block_hash().0
         );
+        assert_eq!(
+            tx_host_env::get_block_epoch(),
+            env.storage.get_current_epoch().0
+        );
     }
 
     /// An example how to write a VP host environment integration test
@@ -217,7 +221,7 @@ mod tests {
         let key = Key::parse(key_raw.to_string()).unwrap();
         let value = "test".to_string();
         let value_raw = value.try_to_vec().unwrap();
-        env.write_log.write(&key, value_raw);
+        env.write_log.write(&key, value_raw).unwrap();
 
         let read_pre_value: Option<String> = vp_host_env::read_pre(key_raw);
         assert_eq!(None, read_pre_value);
@@ -367,34 +371,38 @@ mod tests {
         // Write the public key to storage
         let pk_key = key::ed25519::pk_key(&addr);
         let keypair = key::ed25519::testing::keypair_1();
-        let pk = key::ed25519::PublicKey::from(keypair.public);
+        let pk = keypair.public.clone();
         env.storage
             .write(&pk_key, pk.try_to_vec().unwrap())
             .unwrap();
 
         // Use some arbitrary bytes for tx code
         let code = vec![4, 3, 2, 1, 0];
-        // Use some arbitrary data
-        let data = vec![1, 2, 3, 4].repeat(10);
+        for data in &[
+            // Tx with some arbitrary data
+            Some(vec![1, 2, 3, 4].repeat(10)),
+            // Tx without any data
+            None,
+        ] {
+            env.tx = Tx::new(code.clone(), data.clone()).sign(&keypair);
+            // Initialize the environment
+            init_vp_env(&mut env);
 
-        env.tx = Tx::new(code, Some(data.clone())).sign(&keypair);
-        // Initialize the environment
-        init_vp_env(&mut env);
+            let tx_data = env.tx.data.expect("data should exist");
+            let signed_tx_data =
+                match SignedTxData::try_from_slice(&tx_data[..]) {
+                    Ok(data) => data,
+                    _ => panic!("decoding failed"),
+                };
+            assert_eq!(&signed_tx_data.data, data);
+            assert!(vp_host_env::verify_tx_signature(&pk, &signed_tx_data.sig));
 
-        let tx_data = env.tx.data.expect("data should exist");
-        let signed_tx_data = match SignedTxData::try_from_slice(&tx_data[..]) {
-            Ok(data) => data,
-            _ => panic!("decoding failed"),
-        };
-        assert_eq!(signed_tx_data.data, Some(data));
-        assert!(vp_host_env::verify_tx_signature(&pk, &signed_tx_data.sig));
-
-        let other_keypair = key::ed25519::testing::keypair_2();
-        let other_pk = key::ed25519::PublicKey::from(other_keypair.public);
-        assert!(!vp_host_env::verify_tx_signature(
-            &other_pk,
-            &signed_tx_data.sig
-        ));
+            let other_keypair = key::ed25519::testing::keypair_2();
+            assert!(!vp_host_env::verify_tx_signature(
+                &other_keypair.public,
+                &signed_tx_data.sig
+            ));
+        }
     }
 
     #[test]
@@ -411,6 +419,10 @@ mod tests {
         assert_eq!(
             vp_host_env::get_block_hash(),
             env.storage.get_block_hash().0
+        );
+        assert_eq!(
+            vp_host_env::get_block_epoch(),
+            env.storage.get_current_epoch().0
         );
     }
 
