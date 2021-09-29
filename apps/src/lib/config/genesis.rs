@@ -62,6 +62,8 @@ mod genesis_config {
 
     #[derive(Debug,Deserialize)]
     struct GenesisConfig {
+        // Chain ID
+        pub chain_id: String,
         // Initial validator set
         pub validator: Vec<ValidatorConfig>,
         // Token accounts present at genesis

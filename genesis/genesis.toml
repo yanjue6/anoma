@@ -1,5 +1,8 @@
 # Example genesis with dev settings.
 
+# Chain ID.
+chain_id = "anoma-devchain-00000"
+
 # A genesis validator.
 [[validator]]
 # Validator's public key for consensus.
