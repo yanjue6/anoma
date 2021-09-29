@@ -13,7 +13,9 @@ use anoma::types::{storage, token};
 #[cfg(not(feature = "dev"))]
 /// Genesis configuration file format
 mod genesis_config {
+    use std::array::TryFromSliceError;
     use std::collections::HashMap;
+    use std::convert::TryInto;
 
     use anoma::ledger::parameters::{EpochDuration, Parameters};
     use anoma::ledger::pos::{GenesisValidator, PosParams};
@@ -35,6 +37,13 @@ mod genesis_config {
             Ok(bytes)
         }
 
+        pub fn to_sha256_bytes(&self) -> Result<[u8; 32], HexKeyError> {
+            let bytes = hex::decode(self.0.to_owned())?;
+            let slice = bytes.as_slice();
+            let array: [u8; 32] = slice.try_into()?;
+            Ok(array)
+        }
+
         pub fn to_public_key(&self) -> Result<PublicKey, HexKeyError> {
             let bytes = self.to_bytes()?;
             let key = PublicKey::from_bytes(&bytes)?;
@@ -45,6 +54,7 @@ mod genesis_config {
     #[derive(Debug)]
     enum HexKeyError {
         InvalidHexString,
+        InvalidSha256,
         InvalidPublicKey,
     }
 
@@ -57,6 +67,12 @@ mod genesis_config {
     impl From<ed25519_dalek::ed25519::Error> for HexKeyError {
         fn from(_err: ed25519_dalek::ed25519::Error) -> Self {
             Self::InvalidPublicKey
+        }
+    }
+
+    impl From<TryFromSliceError> for HexKeyError {
+        fn from(_err: TryFromSliceError) -> Self {
+            Self::InvalidSha256
         }
     }
 
@@ -163,14 +179,14 @@ mod genesis_config {
     #[derive(Debug,Deserialize)]
     struct WasmConfig {
         filename: String,
-        sha256: String,
+        sha256: HexString,
     }
 
     fn load_validator(config: &ValidatorConfig, wasm: &HashMap<String, WasmConfig>) -> Validator {
         let validator_vp_name = config.validator_vp.as_ref().unwrap();
         let validator_vp_config = wasm.get(validator_vp_name).unwrap();
         let reward_vp_name = config.staking_reward_vp.as_ref().unwrap();
-        let _reward_vp_config = wasm.get(reward_vp_name).unwrap();
+        let reward_vp_config = wasm.get(reward_vp_name).unwrap();
 
         Validator {
             pos_data: GenesisValidator {
@@ -182,7 +198,10 @@ mod genesis_config {
             },
             account_key: config.account_public_key.as_ref().unwrap().to_public_key().unwrap(),
             non_staked_balance: token::Amount::whole(config.non_staked_balance),
-            vp_code_path: validator_vp_config.filename.to_owned(),
+            validator_vp_code_path: validator_vp_config.filename.to_owned(),
+            validator_vp_sha256: validator_vp_config.sha256.to_sha256_bytes().unwrap(),
+            reward_vp_code_path: reward_vp_config.filename.to_owned(),
+            reward_vp_sha256: reward_vp_config.sha256.to_sha256_bytes().unwrap(),
         }
     }
 
@@ -193,6 +212,7 @@ mod genesis_config {
         TokenAccount {
             address: Address::decode(&config.address).unwrap(),
             vp_code_path: token_vp_config.filename.to_owned(),
+            vp_sha256: token_vp_config.sha256.to_sha256_bytes().unwrap(),
             balances: config.balances.as_ref().unwrap_or(&HashMap::default())
                 .iter().map(|(address, amount)| {
                     (Address::decode(&address).unwrap(),
@@ -208,6 +228,7 @@ mod genesis_config {
         EstablishedAccount {
             address: Address::decode(&config.address).unwrap(),
             vp_code_path: account_vp_config.filename.to_owned(),
+            vp_sha256: account_vp_config.sha256.to_sha256_bytes().unwrap(),
             public_key: match &config.public_key {
                 Some(hex) => Some(hex.to_public_key().unwrap()),
                 None => None,
@@ -295,7 +316,13 @@ pub struct Validator {
     /// validator's voting power
     pub non_staked_balance: token::Amount,
     /// Validity predicate code WASM
-    pub vp_code_path: String,
+    pub validator_vp_code_path: String,
+    /// Expected SHA-256 hash of the validator VP
+    pub validator_vp_sha256: [u8; 32],
+    /// Staking reward account code WASM
+    pub reward_vp_code_path: String,
+    /// Expected SHA-256 hash of the staking reward VP
+    pub reward_vp_sha256: [u8; 32],
 }
 
 #[derive(Clone, Debug)]
@@ -304,6 +331,8 @@ pub struct EstablishedAccount {
     pub address: Address,
     /// Validity predicate code WASM
     pub vp_code_path: String,
+    /// Expected SHA-256 hash of the validity predicate wasm
+    pub vp_sha256: [u8;32],
     /// A public key to be stored in the account's storage, if any
     pub public_key: Option<PublicKey>,
     /// Account's sub-space storage. The values must be borsh encoded bytes.
@@ -316,6 +345,8 @@ pub struct TokenAccount {
     pub address: Address,
     /// Validity predicate code WASM
     pub vp_code_path: String,
+    /// Expected SHA-256 hash of the validity predicate wasm
+    pub vp_sha256: [u8; 32],
     /// Accounts' balances of this token
     pub balances: HashMap<Address, token::Amount>,
 }
