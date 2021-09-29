@@ -74,6 +74,8 @@ mod genesis_config {
         pub parameters: ParametersConfig,
         // PoS parameters
         pub pos_params: PosParamsConfig,
+        // Wasm definitions
+        pub wasm: HashMap<String, WasmConfig>,
     }
 
     #[derive(Debug,Deserialize)]
@@ -156,7 +158,18 @@ mod genesis_config {
         light_client_attack_slash_rate: u64,
     }
 
-    fn load_validator(config: &ValidatorConfig) -> Validator {
+    #[derive(Debug,Deserialize)]
+    struct WasmConfig {
+        filename: String,
+        sha256: String,
+    }
+
+    fn load_validator(config: &ValidatorConfig, wasm: &HashMap<String, WasmConfig>) -> Validator {
+        let validator_vp_name = config.validator_vp.as_ref().unwrap();
+        let validator_vp_config = wasm.get(validator_vp_name).unwrap();
+        let reward_vp_name = config.staking_reward_vp.as_ref().unwrap();
+        let _reward_vp_config = wasm.get(reward_vp_name).unwrap();
+
         Validator {
             pos_data: GenesisValidator {
                 address: Address::decode(&config.address).unwrap(),
@@ -167,14 +180,17 @@ mod genesis_config {
             },
             account_key: config.account_public_key.as_ref().unwrap().to_public_key().unwrap(),
             non_staked_balance: token::Amount::whole(config.non_staked_balance),
-            vp_code_path: config.validator_vp.as_ref().unwrap().to_string(),
+            vp_code_path: validator_vp_config.filename.to_owned(),
         }
     }
 
-    fn load_token(config: &TokenAccountConfig) -> TokenAccount {
+    fn load_token(config: &TokenAccountConfig, wasm: &HashMap<String, WasmConfig>) -> TokenAccount {
+        let token_vp_name = config.vp.as_ref().unwrap();
+        let token_vp_config = wasm.get(token_vp_name).unwrap();
+
         TokenAccount {
             address: Address::decode(&config.address).unwrap(),
-            vp_code_path: config.vp.as_ref().unwrap().to_string(),
+            vp_code_path: token_vp_config.filename.to_owned(),
             balances: config.balances.as_ref().unwrap_or(&HashMap::default())
                 .iter().map(|(address, amount)| {
                     (Address::decode(&address).unwrap(),
@@ -183,10 +199,13 @@ mod genesis_config {
         }
     }
 
-    fn load_established(config: &EstablishedAccountConfig) -> EstablishedAccount {
+    fn load_established(config: &EstablishedAccountConfig, wasm: &HashMap<String, WasmConfig>) -> EstablishedAccount {
+        let account_vp_name = config.vp.as_ref().unwrap();
+        let account_vp_config = wasm.get(account_vp_name).unwrap();
+
         EstablishedAccount {
             address: Address::decode(&config.address).unwrap(),
-            vp_code_path: config.vp.as_ref().unwrap().to_string(),
+            vp_code_path: account_vp_config.filename.to_owned(),
             public_key: match &config.public_key {
                 Some(hex) => Some(hex.to_public_key().unwrap()),
                 None => None,
@@ -206,11 +225,13 @@ mod genesis_config {
     }
 
     fn load_genesis_config(config: GenesisConfig) -> Genesis {
-        let validators = config.validator.iter().map(load_validator).collect();
+        let wasms = config.wasm;
+        let validators = config.validator
+            .iter().map(|cfg|{load_validator(cfg, &wasms)}).collect();
         let tokens = config.token.unwrap_or(vec![])
-            .iter().map(load_token).collect();
+            .iter().map(|cfg|{load_token(cfg, &wasms)}).collect();
         let established = config.established.unwrap_or(vec![])
-            .iter().map(load_established).collect();
+            .iter().map(|cfg|{load_established(cfg, &wasms)}).collect();
         let implicit = config.implicit.unwrap_or(vec![])
             .iter().map(load_implicit).collect();
 
