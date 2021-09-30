@@ -1,24 +1,87 @@
 # Example genesis with dev settings.
 
 # Chain ID.
-chain_id = "anoma-devchain-000000000000000"
+chain_id = "anoma-internal-feigenbaum-0000"
 
-# A genesis validator.
+# A genesis validator-1
 [[validator]]
 # Validator's public key for consensus.
-consensus_public_key = "5e704c4e46265e1ccc87505149f79b9d2e414d01a4e3806dfc65f0a73901c1d0"
+consensus_public_key = "ee0cc26e0be2aa2949645edbb8dea35e886b06be3ee7884ac038e91b7bd2b4bb"
 # Public key of the validator's Anoma account.
 account_public_key = "5e704c4e46265e1ccc87505149f79b9d2e414d01a4e3806dfc65f0a73901c1d0"
 # Public key of the Anoma account for this validator's staking rewards.
-staking_reward_public_key = "6f5c421769d321ec05d01158b170649a01848f43a27988f71443041be23f2f39"
+staking_reward_public_key = "8b16f969267bf976be3eb190754c360f51bfd79fef5eb040440b6d37a6efc6d3"
 # Address of the validator.
-address = "a1qq5qqqqqgfqnsd6pxse5zdj9g5crzsf5x4zyzv6yxerr2d2rxpryzwp5g5m5zvfjxv6ygsekjmraj0"
+address = "atest1v4ehgw36gscyzs6rxg6ny3pngfqnjv3hx4pnw33hxvmrxs2zgscnzvf4gyunjd6xgv652vf4dd957h"
 # Staking reward address of the validator.
-staking_reward_address = "a1qq5qqqqqxaz5vven8yu5gdpng9zrys6ygvurwv3sgsmrvd6xgdzrys6yg4pnwd6z89rrqv2xvjcy9t"
+staking_reward_address = "atest1v4ehgw36xsu5gdfcggunvsekgsm5yvf4xscrqde389zrss69xum5g33eg4ryv3fs8yc5yvfsz04m9h"
 # Validator's token balance at genesis.
-tokens = 200000
+tokens = 20000
 # Amount of the validator's genesis token balance which is not staked.
-non_staked_balance = 100000
+non_staked_balance = 1000000000000
+# VP for the validator account
+validator_vp = "vp_user"
+# VP for the staking reward account
+staking_reward_vp = "vp_user"
+
+# A genesis validator-2
+[[validator]]
+# Validator's public key for consensus.
+consensus_public_key = "3a6b86969e89dd2a5a6e053198aa441bc12a0efe0e3fc59770a9c9a482d6dbec"
+# Public key of the validator's Anoma account.
+account_public_key = "953144afd5bb1cf4335f543752b026475a287d19e2aadd16aa4ddd54dd639a3"
+# Public key of the Anoma account for this validator's staking rewards.
+staking_reward_public_key = "810c5a170dd4622412ef94dc22932d4ced198d7c7b0a665e53ad9a12983a9f43"
+# Address of the validator.
+address = "atest1v4ehgw36g5mnqv69gep5gwfj8qcn233ex5uygv6rgsur2dehxscyys33xgmrzvpjgv65zsjy5aqlzd"
+# Staking reward address of the validator.
+staking_reward_address = "atest1v4ehgw36xu6n23fsxcm5vd33g3zrqsj98qen2vfs8qmnx3pj8qeyywzzgyunj32rgeq5xdjzvw76ay"
+# Validator's token balance at genesis.
+tokens = 20000
+# Amount of the validator's genesis token balance which is not staked.
+non_staked_balance = 1000000000000
+# VP for the validator account
+validator_vp = "vp_user"
+# VP for the staking reward account
+staking_reward_vp = "vp_user"
+
+# A genesis validator-3
+[[validator]]
+# Validator's public key for consensus.
+consensus_public_key = "e6428e89d31d7293299364f585102f9b94726437b87071590c88f3a8a90e05fc"
+# Public key of the validator's Anoma account.
+account_public_key = "5a69df2c4b1cb842bf831d04b6bcd0ea119ef5ad3fc76bf74231f78f318d28c1"
+# Public key of the Anoma account for this validator's staking rewards.
+staking_reward_public_key = "21eed7fcc0dccda7dd1f3ac4035a6ccc5732774b49e8af7460ae7e9873a61f58"
+# Address of the validator.
+address = "atest1v4ehgw36gg6njdec89zyxs6x8yunzvpnxdznss3ng3q5zv2pxs6njvpngdprsdp4xeq5zd6rwdj9aw"
+# Staking reward address of the validator.
+staking_reward_address = "atest1v4ehgw36xaznjw2xg4qnqdfjgdpnssfnggu5gw2pxscryvjr8qmrqvzrx5m5vsj9gcerjs33qm9zxv"
+# Validator's token balance at genesis.
+tokens = 20000
+# Amount of the validator's genesis token balance which is not staked.
+non_staked_balance = 1000000000000
+# VP for the validator account
+validator_vp = "vp_user"
+# VP for the staking reward account
+staking_reward_vp = "vp_user"
+
+# A genesis validator-4
+[[validator]]
+# Validator's public key for consensus.
+consensus_public_key = "38168a0bab1730b9c8664e8e38ce6ef0dbf02891255d37b96726240d997ea4b8"
+# Public key of the validator's Anoma account.
+account_public_key = "af41b5cd58fdc7625ec098842a7f714a1b3c3b9a7d5b91ba920acacfc6b9eeae"
+# Public key of the Anoma account for this validator's staking rewards.
+staking_reward_public_key = "201ac31729039a9e26c81594142b20f7a91e6f686bf236bac4e4ee6e72aa430f"
+# Address of the validator.
+address = "atest1v4ehgw36xvmrss2pg3zrgwp5g5e5xvesg3przdzpgdqnydzrx4zyxv2xgfq5zwf3xucr2wzr0rx42m"
+# Staking reward address of the validator.
+staking_reward_address = "atest1v4ehgw36xscnzs3cxgmrvdf5xvc5v33nx56yvwz98yunxdfnx4rrsv3nxc6rwv3cgvenwdzryflqtc"
+# Validator's token balance at genesis.
+tokens = 20000
+# Amount of the validator's genesis token balance which is not staked.
+non_staked_balance = 1000000000000
 # VP for the validator account
 validator_vp = "vp_user"
 # VP for the staking reward account
@@ -31,60 +94,42 @@ staking_reward_vp = "vp_user"
 address = "a1qq5qqqqqxuc5gvz9gycryv3sgye5v3j9gvurjv34g9prsd6x8qu5xs2ygdzrzsf38q6rss33xf42f3"
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # BTC
 [[token]]
 address = "a1qq5qqqqq8q6yy3p4xyurys3n8qerz3zxxeryyv6rg4pnxdf3x3pyv32rx3zrgwzpxu6ny32r3laduc"
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # ETH
 [[token]]
 address = "a1qq5qqqqqx3z5xd3ngdqnzwzrgfpnxd3hgsuyx3phgfry2s3kxsc5xves8qe5x33sgdprzvjptzfry9"
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # DOT
 [[token]]
 address = "a1qq5qqqqqxq652v3sxap523fs8pznjse5g3pyydf3xqurws6ygvc5gdfcxyuy2deeggenjsjrjrl2ph"
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # Schnitzel
 [[token]]
 address = "a1qq5qqqqq8prrzv6xxcury3p4xucygdp5gfprzdfex9prz3jyg56rxv69gvenvsj9g5enswpcl8npyz"
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # Apfel
 [[token]]
 address = "a1qq5qqqqqgfp52de4x56nqd3ex56y2wph8pznssjzx5ersw2pxfznsd3jxeqnjd3cxapnqsjz2fyt3j"
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # Kartoffel
 [[token]]
@@ -92,42 +137,21 @@ address = "a1qq5qqqqqxs6yvsekxuuyy3pjxsmrgd2rxuungdzpgsmyydjrxsenjdp5xaqn233sgcc
 public_key = ""
 vp = "vp_token"
 [token.balances]
-a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx = 1000000
-a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s = 1000000
-a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9 = 1000000
-a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz = 1000000
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 18446744073709551615
 
 # Some established accounts present at genesis.
 
-# Albert
-[[established]]
-address = "a1qq5qqqqqg4znssfsgcurjsfhgfpy2vjyxy6yg3z98pp5zvp5xgersvfjxvcnx3f4xycrzdfkak0xhx"
-public_key = "a57281e1dd9fd39ec3e8a162a1643ca7c836c0f2dae3bef1412a3a61a2fde1a7"
-vp = "vp_user"
-
-# Bertha
-[[established]]
-address = "a1qq5qqqqqxv6yydz9xc6ry33589q5x33eggcnjs2xx9znydj9xuens3phxppnwvzpg4rrqdpswve4n9"
-public_key = "572512a95b190d615b1987f7072572a64951ad50f4f97ef9dbb83545c46ae600"
-vp = "vp_user"
-
-# Christel
-[[established]]
-address = "a1qq5qqqqqxsuygd2x8pq5yw2ygdryxs6xgsmrsdzx8pryxv34gfrrssfjgccyg3zpxezrqd2y2s3g5s"
-public_key = "d06f8d4f897f329a50fd23ba5d2503bbe22fab2f14d5f625e07a65f617eb2778"
-vp = "vp_user"
-
 # Matchmaker
 [[established]]
-address = "a1qq5qqqqqxu6rvdzpxymnqwfkxfznvsjxggunyd3jg5erg3p3geqnvv35gep5yvzxx5m5x3fsfje8td"
-public_key = "f4fe03b0d3130f077e4d51cc7748baac998750476bef994a0a73ac4e7d183168"
+address = "atest1v4ehgw36x5crvs6zgfpnzvjy8pry2wf4x5crvdfhg56rgw298yc52v3nggursdeexsmrvd343jn99k"
+public_key = "d03bb0a6f80827583ffc08e1b3df798a704b5aa623eb8e6e5317ca725fafc459"
 vp = "vp_user"
 
-# An implicit account present at genesis.
-
-# Daewon (a1qyqzsqqqqqcyvvf5xcu5vd6rg4z5233hg9pn23pjgdryzdjy8pz52wzxxscnvvjxx3rryvzz8y5p6mtz)
-[[implicit]]
-public_key = "2b5b8fda66fb6fc4ef0d86f84b21f250034077effc459fc2403a77a35aa95e3f"
+# faucet
+[[established]]
+address = "atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8"
+public_key = "3f2796784cba7a372dd654e3659cca7463cbfb36b35d33eba8f86de10633f85e"
+vp = "vp_user"
 
 # Wasm VP definitions
 
@@ -159,7 +183,7 @@ max_validator_slots = 128
 pipeline_len = 2
 # Unbonding length (in epochs). Validators may have their stake slashed
 # for a fault in epoch 'n' up through epoch 'n + unbonding_len'.
-unbonding_len = 6
+unbonding_len = 3
 # Votes per token (in basis points, i.e., per 10,000 tokens)
 votes_per_token = 10
 # Reward for proposing a block.
