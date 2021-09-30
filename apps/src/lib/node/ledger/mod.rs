@@ -8,7 +8,7 @@ pub mod tendermint_node;
 
 use std::convert::{TryFrom, TryInto};
 use std::mem;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, Receiver};
 
 use anoma::types::storage::BlockHash;
 use futures::future::{AbortHandle, AbortRegistration, Abortable};
@@ -141,6 +141,7 @@ pub fn reset(config: config::Ledger) -> Result<(), shell::Error> {
 async fn run_shell(
     config: config::Ledger,
     abort_registration: AbortRegistration,
+    failure_receiver: Receiver<()>,
 ) {
     // Construct our ABCI application.
     let service = AbcippShim::new(&config.db, config.chain_id, config.wasm_dir);
@@ -170,11 +171,21 @@ async fn run_shell(
         .unwrap();
 
     // Run the server with the shell
-    let future = Abortable::new(
+    let abortable_shell = Abortable::new(
         server.listen(config.ledger_address),
         abort_registration,
     );
-    let _ = future.await;
+    // The shell will be aborted when Tendermint exits
+    let _ = abortable_shell.await;
+
+    // Check if a failure signal was sent
+    if let Ok(()) = failure_receiver.try_recv() {
+        // Exit with error status code
+        use std::io::Write;
+        let _ = std::io::stdout().lock().flush();
+        let _ = std::io::stderr().lock().flush();
+        std::process::exit(1)
+    }
 }
 
 /// Runs two child processes: A tendermint node, a shell which contains an ABCI
@@ -194,12 +205,19 @@ pub fn run(mut config: config::Ledger) {
     let p2p_persistent_peers = mem::take(&mut config.p2p_persistent_peers);
     let chain_id = config.chain_id.clone();
 
-    // used for shutting down Tendermint node in case the shell panics
-    let (sender, receiver) = channel();
-    let kill_switch = sender.clone();
-    // used for shutting down the shell and making sure that drop is called
-    // on the database
+    // For signalling shut down to the Tendermint node, sent from the
+    // shell or from within the Tendermint process itself.
+    // Send `true` for a graceful shutdown or `false` on a critical error.
+    let (abort_sender, abort_receiver) = channel();
+    let shell_abort_sender = abort_sender.clone();
+
+    // For signalling shut down to the shell from Tendermint, which ensures that
+    // drop is called on the database
     let (abort_handle, abort_registration) = AbortHandle::new_pair();
+
+    // Because we cannot attach any data to the `abort_handle`, we also need
+    // another channel for signalling an error to the shell from Tendermint
+    let (failure_sender, failure_receiver) = channel();
 
     // start Tendermint node
     let tendermint_handle = std::thread::spawn(move || {
@@ -210,13 +228,11 @@ pub fn run(mut config: config::Ledger) {
             rpc_address,
             p2p_address,
             p2p_persistent_peers,
-            sender,
-            receiver,
+            abort_sender,
+            abort_receiver,
         ) {
-            tracing::error!(
-                "Failed to start-up a Tendermint node with {}",
-                err
-            );
+            tracing::error!("Tendermint node failed with {}", err);
+            failure_sender.send(()).unwrap();
         }
         // Once tendermint node stops, ensure that we stop the shell.
         // Implemented in the drop method to be panic-proof
@@ -227,7 +243,7 @@ pub fn run(mut config: config::Ledger) {
 
     // start the shell + ABCI server
     let shell_handle = std::thread::spawn(move || {
-        run_shell(config, abort_registration);
+        run_shell(config, abort_registration, failure_receiver);
     });
 
     tracing::info!("Anoma ledger node started.");
@@ -236,7 +252,7 @@ pub fn run(mut config: config::Ledger) {
         Err(_) => {
             tracing::info!("Anoma shut down unexpectedly");
             // if the shell panicked, shut down the tendermint node
-            let _ = kill_switch.send(true);
+            let _ = shell_abort_sender.send(false);
         }
         _ => tracing::info!("Shutting down Anoma node"),
     }
