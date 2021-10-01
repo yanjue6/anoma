@@ -147,7 +147,10 @@ impl Shell {
                 current_chain_id, init.chain_id
             )));
         }
+        #[cfg(not(feature = "dev"))]
         let genesis = genesis::genesis(&self.base_dir, &self.storage.chain_id);
+        #[cfg(feature = "dev")]
+        let genesis = genesis::genesis();
 
         let ts: tendermint_proto::google::protobuf::Timestamp =
             init.time.expect("Missing genesis time");

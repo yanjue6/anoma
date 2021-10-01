@@ -1,20 +1,20 @@
 //! The parameters used for the chain's genesis
 
 use std::collections::HashMap;
+#[cfg(not(feature = "dev"))]
+use std::path::Path;
 
 use anoma::ledger::parameters::Parameters;
 use anoma::ledger::pos::{GenesisValidator, PosParams};
 use anoma::types::address::Address;
-#[cfg(feature = "asdf")]
-use anoma::types::key::ed25519::Keypair;
-#[cfg(feature = "dev")]
-use std::path::Path;
-#[cfg(feature = "dev")]
+#[cfg(not(feature = "dev"))]
 use anoma::types::chain::ChainId;
+#[cfg(feature = "dev")]
+use anoma::types::key::ed25519::Keypair;
 use anoma::types::key::ed25519::PublicKey;
 use anoma::types::{storage, token};
 
-#[cfg(feature = "dev")]
+#[cfg(not(feature = "dev"))]
 /// Genesis configuration file format
 mod genesis_config {
     use std::array::TryFromSliceError;
@@ -24,17 +24,19 @@ mod genesis_config {
     use std::str::FromStr;
 
     use anoma::ledger::parameters::{EpochDuration, Parameters};
-    use anoma::ledger::pos::{GenesisValidator, PosParams};
     use anoma::ledger::pos::types::BasisPoints;
+    use anoma::ledger::pos::{GenesisValidator, PosParams};
     use anoma::types::address::Address;
     use anoma::types::key::ed25519::{ParsePublicKeyError, PublicKey};
     use anoma::types::{storage, token};
     use hex;
     use serde::Deserialize;
 
-    use super::{EstablishedAccount, Genesis, ImplicitAccount, TokenAccount, Validator};
+    use super::{
+        EstablishedAccount, Genesis, ImplicitAccount, TokenAccount, Validator,
+    };
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct HexString(String);
 
     impl HexString {
@@ -81,7 +83,7 @@ mod genesis_config {
         }
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct GenesisConfig {
         // Chain ID
         pub chain_id: String,
@@ -101,7 +103,7 @@ mod genesis_config {
         pub wasm: HashMap<String, WasmConfig>,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct ValidatorConfig {
         // Public key for consensus. (default: generate)
         consensus_public_key: Option<HexString>,
@@ -123,7 +125,7 @@ mod genesis_config {
         staking_reward_vp: Option<String>,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct TokenAccountConfig {
         // Address of token account.
         address: String,
@@ -133,7 +135,7 @@ mod genesis_config {
         balances: Option<HashMap<String, u64>>,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct EstablishedAccountConfig {
         // Address of established account.
         address: String,
@@ -145,13 +147,13 @@ mod genesis_config {
         storage: Option<HashMap<String, HexString>>,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct ImplicitAccountConfig {
         // Public key of implicit account.
         public_key: HexString,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct ParametersConfig {
         // Minimum number of blocks per epoch.
         min_num_of_blocks: u64,
@@ -159,7 +161,7 @@ mod genesis_config {
         min_duration: i64,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct PosParamsConfig {
         // Maximum number of active validators.
         max_validator_slots: u64,
@@ -181,13 +183,16 @@ mod genesis_config {
         light_client_attack_slash_rate: u64,
     }
 
-    #[derive(Debug,Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct WasmConfig {
         filename: String,
         sha256: HexString,
     }
 
-    fn load_validator(config: &ValidatorConfig, wasm: &HashMap<String, WasmConfig>) -> Validator {
+    fn load_validator(
+        config: &ValidatorConfig,
+        wasm: &HashMap<String, WasmConfig>,
+    ) -> Validator {
         let validator_vp_name = config.validator_vp.as_ref().unwrap();
         let validator_vp_config = wasm.get(validator_vp_name).unwrap();
         let reward_vp_name = config.staking_reward_vp.as_ref().unwrap();
@@ -196,21 +201,48 @@ mod genesis_config {
         Validator {
             pos_data: GenesisValidator {
                 address: Address::decode(&config.address).unwrap(),
-                staking_reward_address: Address::decode(&config.staking_reward_address).unwrap(),
+                staking_reward_address: Address::decode(
+                    &config.staking_reward_address,
+                )
+                .unwrap(),
                 tokens: token::Amount::whole(config.tokens),
-                consensus_key: config.consensus_public_key.as_ref().unwrap().to_public_key().unwrap(),
-                staking_reward_key: config.staking_reward_public_key.as_ref().unwrap().to_public_key().unwrap(),
+                consensus_key: config
+                    .consensus_public_key
+                    .as_ref()
+                    .unwrap()
+                    .to_public_key()
+                    .unwrap(),
+                staking_reward_key: config
+                    .staking_reward_public_key
+                    .as_ref()
+                    .unwrap()
+                    .to_public_key()
+                    .unwrap(),
             },
-            account_key: config.account_public_key.as_ref().unwrap().to_public_key().unwrap(),
+            account_key: config
+                .account_public_key
+                .as_ref()
+                .unwrap()
+                .to_public_key()
+                .unwrap(),
             non_staked_balance: token::Amount::whole(config.non_staked_balance),
             validator_vp_code_path: validator_vp_config.filename.to_owned(),
-            validator_vp_sha256: validator_vp_config.sha256.to_sha256_bytes().unwrap(),
+            validator_vp_sha256: validator_vp_config
+                .sha256
+                .to_sha256_bytes()
+                .unwrap(),
             reward_vp_code_path: reward_vp_config.filename.to_owned(),
-            reward_vp_sha256: reward_vp_config.sha256.to_sha256_bytes().unwrap(),
+            reward_vp_sha256: reward_vp_config
+                .sha256
+                .to_sha256_bytes()
+                .unwrap(),
         }
     }
 
-    fn load_token(config: &TokenAccountConfig, wasm: &HashMap<String, WasmConfig>) -> TokenAccount {
+    fn load_token(
+        config: &TokenAccountConfig,
+        wasm: &HashMap<String, WasmConfig>,
+    ) -> TokenAccount {
         let token_vp_name = config.vp.as_ref().unwrap();
         let token_vp_config = wasm.get(token_vp_name).unwrap();
 
@@ -218,15 +250,25 @@ mod genesis_config {
             address: Address::decode(&config.address).unwrap(),
             vp_code_path: token_vp_config.filename.to_owned(),
             vp_sha256: token_vp_config.sha256.to_sha256_bytes().unwrap(),
-            balances: config.balances.as_ref().unwrap_or(&HashMap::default())
-                .iter().map(|(address, amount)| {
-                    (Address::decode(&address).unwrap(),
-                     token::Amount::whole(*amount))
-                }).collect(),
+            balances: config
+                .balances
+                .as_ref()
+                .unwrap_or(&HashMap::default())
+                .iter()
+                .map(|(address, amount)| {
+                    (
+                        Address::decode(&address).unwrap(),
+                        token::Amount::whole(*amount),
+                    )
+                })
+                .collect(),
         }
     }
 
-    fn load_established(config: &EstablishedAccountConfig, wasm: &HashMap<String, WasmConfig>) -> EstablishedAccount {
+    fn load_established(
+        config: &EstablishedAccountConfig,
+        wasm: &HashMap<String, WasmConfig>,
+    ) -> EstablishedAccount {
         let account_vp_name = config.vp.as_ref().unwrap();
         let account_vp_config = wasm.get(account_vp_name).unwrap();
 
@@ -238,11 +280,18 @@ mod genesis_config {
                 Some(hex) => Some(hex.to_public_key().unwrap()),
                 None => None,
             },
-            storage: config.storage.as_ref().unwrap_or(&HashMap::default())
-                .iter().map(|(address, hex)| {
-                    (storage::Key::parse(&address).unwrap(),
-                     hex.to_bytes().unwrap())
-                }).collect(),
+            storage: config
+                .storage
+                .as_ref()
+                .unwrap_or(&HashMap::default())
+                .iter()
+                .map(|(address, hex)| {
+                    (
+                        storage::Key::parse(&address).unwrap(),
+                        hex.to_bytes().unwrap(),
+                    )
+                })
+                .collect(),
         }
     }
 
@@ -254,19 +303,37 @@ mod genesis_config {
 
     fn load_genesis_config(config: GenesisConfig) -> Genesis {
         let wasms = config.wasm;
-        let validators = config.validator
-            .iter().map(|cfg|{load_validator(cfg, &wasms)}).collect();
-        let tokens = config.token.unwrap_or(vec![])
-            .iter().map(|cfg|{load_token(cfg, &wasms)}).collect();
-        let established = config.established.unwrap_or(vec![])
-            .iter().map(|cfg|{load_established(cfg, &wasms)}).collect();
-        let implicit = config.implicit.unwrap_or(vec![])
-            .iter().map(load_implicit).collect();
+        let validators = config
+            .validator
+            .iter()
+            .map(|cfg| load_validator(cfg, &wasms))
+            .collect();
+        let tokens = config
+            .token
+            .unwrap_or(vec![])
+            .iter()
+            .map(|cfg| load_token(cfg, &wasms))
+            .collect();
+        let established = config
+            .established
+            .unwrap_or(vec![])
+            .iter()
+            .map(|cfg| load_established(cfg, &wasms))
+            .collect();
+        let implicit = config
+            .implicit
+            .unwrap_or(vec![])
+            .iter()
+            .map(load_implicit)
+            .collect();
 
         let parameters = Parameters {
             epoch_duration: EpochDuration {
                 min_num_of_blocks: config.parameters.min_num_of_blocks,
-                min_duration: anoma::types::time::Duration::seconds(config.parameters.min_duration).into(),
+                min_duration: anoma::types::time::Duration::seconds(
+                    config.parameters.min_duration,
+                )
+                .into(),
             },
         };
 
@@ -274,11 +341,17 @@ mod genesis_config {
             max_validator_slots: config.pos_params.max_validator_slots,
             pipeline_len: config.pos_params.pipeline_len,
             unbonding_len: config.pos_params.unbonding_len,
-            votes_per_token: BasisPoints::new(config.pos_params.votes_per_token),
+            votes_per_token: BasisPoints::new(
+                config.pos_params.votes_per_token,
+            ),
             block_proposer_reward: config.pos_params.block_proposer_reward,
             block_vote_reward: config.pos_params.block_vote_reward,
-            duplicate_vote_slash_rate: BasisPoints::new(config.pos_params.duplicate_vote_slash_rate),
-            light_client_attack_slash_rate: BasisPoints::new(config.pos_params.light_client_attack_slash_rate),
+            duplicate_vote_slash_rate: BasisPoints::new(
+                config.pos_params.duplicate_vote_slash_rate,
+            ),
+            light_client_attack_slash_rate: BasisPoints::new(
+                config.pos_params.light_client_attack_slash_rate,
+            ),
         };
 
         Genesis {
@@ -337,7 +410,7 @@ pub struct EstablishedAccount {
     /// Validity predicate code WASM
     pub vp_code_path: String,
     /// Expected SHA-256 hash of the validity predicate wasm
-    pub vp_sha256: [u8;32],
+    pub vp_sha256: [u8; 32],
     /// A public key to be stored in the account's storage, if any
     pub public_key: Option<PublicKey>,
     /// Account's sub-space storage. The values must be borsh encoded bytes.
@@ -363,7 +436,14 @@ pub struct ImplicitAccount {
     pub public_key: PublicKey,
 }
 
-#[cfg(feature = "asdf")]
+#[cfg(not(feature = "dev"))]
+pub fn genesis(base_dir: impl AsRef<Path>, chain_id: &ChainId) -> Genesis {
+    let path = base_dir
+        .as_ref()
+        .join(format!("{}.toml", chain_id.as_str()));
+    genesis_config::read_genesis_config(path)
+}
+#[cfg(feature = "dev")]
 pub fn genesis() -> Genesis {
     use std::iter::FromIterator;
 
@@ -400,7 +480,10 @@ pub fn genesis() -> Genesis {
         account_key: account_keypair.public,
         non_staked_balance: token::Amount::whole(100_000),
         // TODO replace with https://github.com/anoma/anoma/issues/25)
-        vp_code_path: vp_user_path.into(),
+        validator_vp_code_path: vp_user_path.into(),
+        validator_vp_sha256: Default::default(),
+        reward_vp_code_path: vp_user_path.into(),
+        reward_vp_sha256: Default::default(),
     };
     let parameters = Parameters {
         epoch_duration: EpochDuration {
@@ -411,24 +494,28 @@ pub fn genesis() -> Genesis {
     let albert = EstablishedAccount {
         address: wallet::defaults::albert_address(),
         vp_code_path: vp_user_path.into(),
+        vp_sha256: Default::default(),
         public_key: Some(wallet::defaults::albert_keypair().public),
         storage: HashMap::default(),
     };
     let bertha = EstablishedAccount {
         address: wallet::defaults::bertha_address(),
         vp_code_path: vp_user_path.into(),
+        vp_sha256: Default::default(),
         public_key: Some(wallet::defaults::bertha_keypair().public),
         storage: HashMap::default(),
     };
     let christel = EstablishedAccount {
         address: wallet::defaults::christel_address(),
         vp_code_path: vp_user_path.into(),
+        vp_sha256: Default::default(),
         public_key: Some(wallet::defaults::christel_keypair().public),
         storage: HashMap::default(),
     };
     let matchmaker = EstablishedAccount {
         address: wallet::defaults::matchmaker_address(),
         vp_code_path: vp_user_path.into(),
+        vp_sha256: Default::default(),
         public_key: Some(wallet::defaults::matchmaker_keypair().public),
         storage: HashMap::default(),
     };
@@ -447,6 +534,7 @@ pub fn genesis() -> Genesis {
         .map(|(address, _)| TokenAccount {
             address,
             vp_code_path: vp_token_path.into(),
+            vp_sha256: Default::default(),
             balances: balances.clone(),
         })
         .collect();
@@ -458,13 +546,6 @@ pub fn genesis() -> Genesis {
         parameters,
         pos_params: PosParams::default(),
     }
-}
-#[cfg(feature = "dev")]
-pub fn genesis(base_dir: impl AsRef<Path>, chain_id: &ChainId) -> Genesis {
-    let path = base_dir
-        .as_ref()
-        .join(format!("{}.toml", chain_id.as_str()));
-    genesis_config::read_genesis_config(path)
 }
 
 #[cfg(test)]

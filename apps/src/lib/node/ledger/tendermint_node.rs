@@ -39,7 +39,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// Run the tendermint node.
 pub fn run(
-    #[cfg(feature = "dev")] base_dir: PathBuf,
     home_dir: PathBuf,
     chain_id: ChainId,
     ledger_address: String,
@@ -73,7 +72,7 @@ pub fn run(
 
     #[cfg(feature = "dev")]
     {
-        let genesis = &crate::config::genesis::genesis(&base_dir, &chain_id);
+        let genesis = &crate::config::genesis::genesis();
         // write the validator key file if it didn't already exist
         if !has_validator_key {
             write_validator_key(
