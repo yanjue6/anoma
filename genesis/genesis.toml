@@ -29,7 +29,7 @@ staking_reward_vp = "vp_user"
 # Validator's public key for consensus.
 consensus_public_key = "3a6b86969e89dd2a5a6e053198aa441bc12a0efe0e3fc59770a9c9a482d6dbec"
 # Public key of the validator's Anoma account.
-account_public_key = "953144afd5bb1cf4335f543752b026475a287d19e2aadd16aa4ddd54dd639a3"
+account_public_key = "e953144afd5bb1cf4335f543752b026475a287d19e2aadd16aa4ddd54dd639a3"
 # Public key of the Anoma account for this validator's staking rewards.
 staking_reward_public_key = "810c5a170dd4622412ef94dc22932d4ced198d7c7b0a665e53ad9a12983a9f43"
 # Address of the validator.
@@ -94,42 +94,42 @@ staking_reward_vp = "vp_user"
 address = "atest1v4ehgw36x3prswzxggunzv6pxqmnvdj9xvcyzvpsggeyvs3cg9qnywf589qnwvfsg5erg3fkl09rg5"
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # BTC
 [[token]]
 address = "atest1v4ehgw36xdzryve5gsc52veeg5cnsv2yx5eygvp38qcrvd29xy6rys6p8yc5xvp4xfpy2v694wgwcp"
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # ETH
 [[token]]
 address = "atest1v4ehgw36xqmr2d3nx3ryvd2xxgmrq33j8qcns33sxezrgv6zxdzrydjrxveygd2yxumrsdpsf9jc2p"
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # DOT
 [[token]]
 address = "atest1v4ehgw36gg6nvs2zgfpyxsfjgc65yv6pxy6nwwfsxgungdzrggeyzv35gveyxsjyxymyz335hur2jn"
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # Schnitzel
 [[token]]
 address = "atest1v4ehgw36xue5xvf5xvuyzvpjx5un2v3k8qeyvd3cxdqns32p89rrxd6xx9zngvpegccnzs699rdnnt"
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # Apfel
 [[token]]
 address = "atest1v4ehgw36gfryydj9g3p5zv3kg9znyd358ycnzsfcggc5gvecgc6ygs2rxv6ry3zpg4zrwdfeumqcz9"
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # Kartoffel
 [[token]]
@@ -137,7 +137,7 @@ address = "atest1v4ehgw36gep5ysecxq6nyv3jg3zygv3e89qn2vp48pryxsf4xpznvve5gvmy23f
 public_key = ""
 vp = "vp_token"
 [token.balances]
-atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854775807
+atest1v4ehgw368ycygvpcx4pygdpkgvungd2zgfzyvvp48pznvwzpxverwv2zxumrq3f4gfqnysej38vfj8 = 9223372036854
 
 # Some established accounts present at genesis.
 
