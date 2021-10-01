@@ -143,7 +143,12 @@ async fn run_shell(
     abort_registration: AbortRegistration,
 ) {
     // Construct our ABCI application.
-    let service = AbcippShim::new(&config.db, config.chain_id, config.wasm_dir);
+    let service = AbcippShim::new(
+        config.base_dir,
+        &config.db,
+        config.chain_id,
+        config.wasm_dir,
+    );
 
     // Split it into components.
     let (consensus, mempool, snapshot, info) = split::service(service, 5);
@@ -193,6 +198,8 @@ pub fn run(mut config: config::Ledger) {
     let p2p_address = config.p2p_address.to_string();
     let p2p_persistent_peers = mem::take(&mut config.p2p_persistent_peers);
     let chain_id = config.chain_id.clone();
+    #[cfg(feature = "dev")]
+    let base_dir = config.base_dir.clone();
 
     // used for shutting down Tendermint node in case the shell panics
     let (sender, receiver) = channel();
@@ -204,6 +211,8 @@ pub fn run(mut config: config::Ledger) {
     // start Tendermint node
     let tendermint_handle = std::thread::spawn(move || {
         if let Err(err) = tendermint_node::run(
+            #[cfg(feature = "dev")]
+            base_dir,
             home_dir,
             chain_id,
             ledger_address,

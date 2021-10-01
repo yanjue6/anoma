@@ -7,6 +7,10 @@ use anoma::ledger::pos::{GenesisValidator, PosParams};
 use anoma::types::address::Address;
 #[cfg(feature = "asdf")]
 use anoma::types::key::ed25519::Keypair;
+#[cfg(feature = "dev")]
+use std::path::Path;
+#[cfg(feature = "dev")]
+use anoma::types::chain::ChainId;
 use anoma::types::key::ed25519::PublicKey;
 use anoma::types::{storage, token};
 
@@ -16,6 +20,7 @@ mod genesis_config {
     use std::array::TryFromSliceError;
     use std::collections::HashMap;
     use std::convert::TryInto;
+    use std::path::Path;
     use std::str::FromStr;
 
     use anoma::ledger::parameters::{EpochDuration, Parameters};
@@ -286,7 +291,7 @@ mod genesis_config {
         }
     }
 
-    pub fn read_genesis_config(path: &str) -> Genesis {
+    pub fn read_genesis_config(path: impl AsRef<Path>) -> Genesis {
         let config_file = std::fs::read_to_string(path).unwrap();
         load_genesis_config(toml::from_str(&config_file).unwrap())
     }
@@ -455,8 +460,12 @@ pub fn genesis() -> Genesis {
     }
 }
 #[cfg(feature = "dev")]
-pub fn genesis() -> Genesis {
-    genesis_config::read_genesis_config("genesis/genesis.toml")
+pub fn genesis(base_dir: impl AsRef<Path>, chain_id: &ChainId) -> Genesis {
+    let path = base_dir
+        .as_ref()
+        .join(chain_id.as_str())
+        .join("genesis.toml");
+    genesis_config::read_genesis_config(path)
 }
 
 #[cfg(test)]
