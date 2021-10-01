@@ -53,26 +53,26 @@ mod genesis_config {
 
     #[derive(Debug)]
     enum HexKeyError {
-        InvalidHexString,
-        InvalidSha256,
-        InvalidPublicKey,
+        InvalidHexString(hex::FromHexError),
+        InvalidSha256(TryFromSliceError),
+        InvalidPublicKey(ed25519_dalek::ed25519::Error),
     }
 
     impl From<hex::FromHexError> for HexKeyError {
-        fn from(_err: hex::FromHexError) -> Self {
-            Self::InvalidHexString
+        fn from(err: hex::FromHexError) -> Self {
+            Self::InvalidHexString(err)
         }
     }
 
     impl From<ed25519_dalek::ed25519::Error> for HexKeyError {
-        fn from(_err: ed25519_dalek::ed25519::Error) -> Self {
-            Self::InvalidPublicKey
+        fn from(err: ed25519_dalek::ed25519::Error) -> Self {
+            Self::InvalidPublicKey(err)
         }
     }
 
     impl From<TryFromSliceError> for HexKeyError {
-        fn from(_err: TryFromSliceError) -> Self {
-            Self::InvalidSha256
+        fn from(err: TryFromSliceError) -> Self {
+            Self::InvalidSha256(err)
         }
     }
 
