@@ -463,8 +463,7 @@ pub fn genesis() -> Genesis {
 pub fn genesis(base_dir: impl AsRef<Path>, chain_id: &ChainId) -> Genesis {
     let path = base_dir
         .as_ref()
-        .join(chain_id.as_str())
-        .join("genesis.toml");
+        .join(format!("{}.toml", chain_id.as_str()));
     genesis_config::read_genesis_config(path)
 }
 
