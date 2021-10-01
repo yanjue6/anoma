@@ -16,12 +16,13 @@ mod genesis_config {
     use std::array::TryFromSliceError;
     use std::collections::HashMap;
     use std::convert::TryInto;
+    use std::str::FromStr;
 
     use anoma::ledger::parameters::{EpochDuration, Parameters};
     use anoma::ledger::pos::{GenesisValidator, PosParams};
     use anoma::ledger::pos::types::BasisPoints;
     use anoma::types::address::Address;
-    use anoma::types::key::ed25519::PublicKey;
+    use anoma::types::key::ed25519::{ParsePublicKeyError, PublicKey};
     use anoma::types::{storage, token};
     use hex;
     use serde::Deserialize;
@@ -45,8 +46,7 @@ mod genesis_config {
         }
 
         pub fn to_public_key(&self) -> Result<PublicKey, HexKeyError> {
-            let bytes = self.to_bytes()?;
-            let key = PublicKey::from_bytes(&bytes)?;
+            let key = PublicKey::from_str(&self.0)?;
             Ok(key)
         }
     }
@@ -55,7 +55,7 @@ mod genesis_config {
     enum HexKeyError {
         InvalidHexString(hex::FromHexError),
         InvalidSha256(TryFromSliceError),
-        InvalidPublicKey(ed25519_dalek::ed25519::Error),
+        InvalidPublicKey(ParsePublicKeyError),
     }
 
     impl From<hex::FromHexError> for HexKeyError {
@@ -64,8 +64,8 @@ mod genesis_config {
         }
     }
 
-    impl From<ed25519_dalek::ed25519::Error> for HexKeyError {
-        fn from(err: ed25519_dalek::ed25519::Error) -> Self {
+    impl From<ParsePublicKeyError> for HexKeyError {
+        fn from(err: ParsePublicKeyError) -> Self {
             Self::InvalidPublicKey(err)
         }
     }
