@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use anoma::ledger::parameters::Parameters;
 use anoma::ledger::pos::{GenesisValidator, PosParams};
 use anoma::types::address::Address;
-#[cfg(feature = "dev")]
+#[cfg(feature = "asdf")]
 use anoma::types::key::ed25519::Keypair;
 use anoma::types::key::ed25519::PublicKey;
 use anoma::types::{storage, token};
 
-#[cfg(not(feature = "dev"))]
+#[cfg(feature = "dev")]
 /// Genesis configuration file format
 mod genesis_config {
     use std::array::TryFromSliceError;
@@ -358,7 +358,7 @@ pub struct ImplicitAccount {
     pub public_key: PublicKey,
 }
 
-#[cfg(feature = "dev")]
+#[cfg(feature = "asdf")]
 pub fn genesis() -> Genesis {
     use std::iter::FromIterator;
 
@@ -454,7 +454,7 @@ pub fn genesis() -> Genesis {
         pos_params: PosParams::default(),
     }
 }
-#[cfg(not(feature = "dev"))]
+#[cfg(feature = "dev")]
 pub fn genesis() -> Genesis {
     genesis_config::read_genesis_config("genesis/genesis.toml")
 }
