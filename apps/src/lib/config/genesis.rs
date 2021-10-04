@@ -14,7 +14,6 @@ use anoma::types::key::ed25519::Keypair;
 use anoma::types::key::ed25519::PublicKey;
 use anoma::types::{storage, token};
 
-#[cfg(not(feature = "dev"))]
 /// Genesis configuration file format
 pub mod genesis_config {
     use std::array::TryFromSliceError;
