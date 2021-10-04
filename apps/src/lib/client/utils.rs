@@ -70,7 +70,7 @@ pub fn init_network(
             .expect("Couldn't create validator node key file");
         serde_json::to_writer_pretty(file, &tm_node_keypair_json)
             .expect("Couldn't write validator node key file");
-        tendermint_node::write_validator_state(tm_home_dir);
+        tendermint_node::write_validator_state(&tm_home_dir);
 
         // Build the list of persistent peers from the validators' node IDs
         let peer = tendermint::net::Address::from_str(&format!(
@@ -116,6 +116,11 @@ pub fn init_network(
 
         // Generate account and reward addresses
         let address = address::gen_established_address("validator account");
+        tendermint_node::write_validator_key(
+            &tm_home_dir,
+            &address,
+            &consensus_keypair,
+        );
         let reward_address = address::gen_established_address("validator reward account");
         config.address = Some(address.to_string());
         config.staking_reward_address = Some(reward_address.to_string());
