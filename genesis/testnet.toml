@@ -1,6 +1,6 @@
 # Example testnet
 
-genesis_time = "2021-10-01 00:00:00+00:00"
+genesis_time = "2021-10-01T00:00:00.000000000Z"
 
 [parameters]
 min_num_of_blocks = 10
