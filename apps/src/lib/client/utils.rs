@@ -56,7 +56,12 @@ pub fn init_network(
         // Convert and write the keypair into Tendermint node_key.json file
         let node_key: ed25519_dalek::Keypair = node_keypair.into();
         let tm_node_key = base64::encode(node_key.to_bytes());
-        let tm_node_keypair_json = json!({ "priv_key": tm_node_key });
+        let tm_node_keypair_json = json!({
+            "priv_key": {
+                "type": "tendermint/PrivKeyEd25519",
+                "value": tm_node_key,
+            }
+        });
         let chain_dir = validator_dir.join(&temp_dir);
         let tm_home_dir = chain_dir.join("tendermint");
         let tm_config_dir = tm_home_dir.join("config");
