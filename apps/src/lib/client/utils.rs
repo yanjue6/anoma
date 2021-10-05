@@ -6,6 +6,7 @@ use std::str::FromStr;
 use anoma::types::chain::ChainId;
 use anoma::types::key::ed25519::Keypair;
 use anoma::types::{address, token};
+use borsh::BorshSerialize;
 use rand::prelude::ThreadRng;
 use rand::thread_rng;
 use serde_json::json;
@@ -198,9 +199,10 @@ pub fn init_network(
     wallet.save().unwrap();
 
     // Generate the chain ID first
-    let genesis_bytes = toml::to_vec(&config).unwrap();
-    let chain_id =
-        ChainId::from_genesis(chain_id_prefix, genesis_bytes);
+    let genesis = genesis_config::load_genesis_config(config.clone());
+    let genesis_bytes = genesis.try_to_vec().unwrap();
+    let chain_id = ChainId::from_genesis(chain_id_prefix, genesis_bytes);
+    let chain_dir = global_args.base_dir.join(chain_id.as_str());
     let genesis_path = global_args
         .base_dir
         .join(format!("{}.toml", chain_id.as_str()));
