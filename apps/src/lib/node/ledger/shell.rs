@@ -214,7 +214,7 @@ impl Shell {
                 let mut hasher = Sha256::new();
                 hasher.update(&vp_code);
                 let vp_code_hash = hasher.finalize();
-                assert_equal(vp_code_hash.as_slice(), &vp_sha256);
+                assert_eq!(vp_code_hash.as_slice(), &vp_sha256);
             }
 
             self.storage
@@ -265,7 +265,7 @@ impl Shell {
                 let mut hasher = Sha256::new();
                 hasher.update(&vp_code);
                 let vp_code_hash = hasher.finalize();
-                assert_equal(vp_code_hash.as_slice(), &vp_sha256);
+                assert_eq!(vp_code_hash.as_slice(), &vp_sha256);
             }
 
             self.storage
@@ -304,7 +304,7 @@ impl Shell {
                 let mut hasher = Sha256::new();
                 hasher.update(&vp_code);
                 let vp_code_hash = hasher.finalize();
-                assert_equal(
+                assert_eq!(
                     vp_code_hash.as_slice(),
                     &validator.validator_vp_sha256,
                 );
