@@ -14,7 +14,7 @@ use serde_json::json;
 use crate::cli::{self, args};
 use crate::config::genesis::genesis_config;
 use crate::config::global::GlobalConfig;
-use crate::config::{Config, IntentGossiper, PeerAddress, genesis};
+use crate::config::{self, genesis, Config, IntentGossiper, PeerAddress};
 use crate::node::ledger::tendermint_node;
 use crate::wallet::Wallet;
 
@@ -133,26 +133,6 @@ pub fn init_network(
         wallet.save().unwrap();
     });
 
-    // Generate the ledger and intent gossip config with the persistent peers
-    config.validator.iter_mut().for_each(|(name, validator_config)| {
-        let validator_dir = accounts_dir.join(name).join(&global_args.base_dir);
-        // The `temp_chain_id` gets renamed after we have chain ID
-        let mut config = Config::load(&validator_dir, &temp_chain_id);
-        // Add a ledger P2P persistent peers
-        config.ledger.p2p_persistent_peers = persistent_peers.clone();
-        // Clear the net address from the config and use it to set ports
-        let net_address = validator_config.net_address.take().unwrap();
-        let first_port = SocketAddr::from_str(&net_address).unwrap().port();
-        config.ledger.p2p_address.set_port(first_port);
-        config.ledger.ledger_address.set_port(first_port + 1);
-        config.ledger.rpc_address.set_port(first_port + 2);
-        config.intent_gossiper = gossiper_configs.remove(name).unwrap();
-        if let Some(discover) = &mut config.intent_gossiper.discover_peer {
-            discover.bootstrap_peers = bootstrap_peers.clone();
-        }
-        config.write(&validator_dir, &temp_chain_id, true).unwrap();
-    });
-
     // Create a wallet for all other account keys
     let mut wallet = Wallet::load_or_new(&accounts_dir.join("other"));
     if let Some(established) = &mut config.established {
@@ -217,23 +197,68 @@ pub fn init_network(
     let global_config = GlobalConfig::new(chain_id.clone());
     global_config.write(&global_args.base_dir).unwrap();
 
-    // Rename the generated directories for validators from `temp_chain_id` to `chain_id`
+    // Rename the generated directories for validators from `temp_chain_id` to
+    // `chain_id`
     config.validator.iter().for_each(|(name, _config)| {
         let validator_dir = accounts_dir.join(name);
         let temp_chain_dir = validator_dir.join(&temp_dir);
-        let chain_dir = validator_dir.join(&chain_id.as_str());
+        let chain_dir = validator_dir
+            .join(&global_args.base_dir)
+            .join(&chain_id.as_str());
         std::fs::rename(&temp_chain_dir, &chain_dir).unwrap();
         // Write the genesis and global config into validator sub-dirs
         genesis_config::write_genesis_config(
             &config,
             validator_dir.join(&genesis_path),
         );
-        global_config.write(validator_dir.join(&global_args.base_dir)).unwrap();
+        global_config
+            .write(validator_dir.join(&global_args.base_dir))
+            .unwrap();
     });
 
     // Rename the generate chain config dir from `temp_chain_id` to `chain_id`
-    let chain_dir = global_args.base_dir.join(chain_id.as_str());
     std::fs::rename(&temp_dir, &chain_dir).unwrap();
+
+    // Generate the validators' ledger and intent gossip config
+    config
+        .validator
+        .iter_mut()
+        .for_each(|(name, validator_config)| {
+            let accounts_dir = chain_dir.join("setup");
+            let validator_dir =
+                accounts_dir.join(name).join(&global_args.base_dir);
+            let mut config = Config::load(&validator_dir, &chain_id);
+            // In `config::Ledger`'s `base_dir`, `chain_id` and `tendermint`,
+            // the paths are prefixed with `validator_dir` given in the first
+            // parameter. We need to remove this prefix, because
+            // these sub-directories will be moved to validators' root
+            // directories.
+            config.ledger.base_dir =
+                global_args.base_dir.join(chain_id.as_str());
+            config.ledger.tendermint = global_args
+                .base_dir
+                .join(chain_id.as_str())
+                .join(config::TENDERMINT_DIR);
+            config.ledger.db = global_args
+                .base_dir
+                .join(chain_id.as_str())
+                .join(config::DB_DIR);
+            // Add a ledger P2P persistent peers
+            config.ledger.p2p_persistent_peers = persistent_peers.clone();
+            // Clear the net address from the config and use it to set ports
+            let net_address = validator_config.net_address.take().unwrap();
+            let first_port = SocketAddr::from_str(&net_address).unwrap().port();
+            config.ledger.p2p_address.set_port(first_port);
+            config.ledger.ledger_address.set_port(first_port + 1);
+            config.ledger.rpc_address.set_port(first_port + 2);
+            // Validator node should turned off peer exchange reactor
+            config.ledger.p2p_pex = false;
+            config.intent_gossiper = gossiper_configs.remove(name).unwrap();
+            if let Some(discover) = &mut config.intent_gossiper.discover_peer {
+                discover.bootstrap_peers = bootstrap_peers.clone();
+            }
+            config.write(&validator_dir, &chain_id, true).unwrap();
+        });
 
     // Update the ledger config persistent peers and save it
     let mut config = Config::load(&global_args.base_dir, &chain_id);
