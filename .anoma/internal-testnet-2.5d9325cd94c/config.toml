@@ -1,0 +1,27 @@
+[ledger]
+base_dir = ".anoma"
+chain_id = "internal-testnet-2.5d9325cd94c"
+genesis_time = "2021-09-30T10:00:00+00:00"
+tendermint = ".anoma/internal-testnet-2.5d9325cd94c/tendermint"
+db = ".anoma/internal-testnet-2.5d9325cd94c/db"
+ledger_address = "127.0.0.1:26658"
+rpc_address = "127.0.0.1:26657"
+p2p_address = "0.0.0.0:26656"
+p2p_persistent_peers = ["tcp://048e5c0d498b78e9aa9c523100cfadad54378294@79.125.112.218:26656", "tcp://aee904a6ad0c25b2bdf3942d615d29db35568ae8@54.195.72.213:26656", "tcp://fef034cfe0c5aec78fc59700c355ad81998a2e44@52.210.23.30:26656", "tcp://1a0f638e65531b6ed06d582e57cb2f13e4f05f8e@63.34.55.152:26656"]
+p2p_pex = true
+wasm_dir = "wasm"
+
+[intent_gossiper]
+address = "/ip4/0.0.0.0/tcp/26659"
+topics = ["asset_v0"]
+subscription_filter = "asset_v\\d{1,2}"
+
+[intent_gossiper.gossiper]
+address = "D4F26B72454E9780C4968A6A97F0AF757C7F55C1"
+key = [198, 225, 0, 206, 120, 152, 48, 119, 131, 20, 120, 138, 38, 88, 106, 246, 94, 30, 230, 235, 231, 243, 35, 98, 113, 39, 250, 211, 245, 37, 174, 121, 143, 68, 17, 43, 48, 41, 18, 206, 59, 108, 237, 240, 252, 148, 136, 134, 57, 130, 50, 7, 202, 72, 210, 178, 112, 221, 171, 132, 223, 42, 111, 215]
+
+[intent_gossiper.discover_peer]
+max_discovery_peers = 16
+kademlia = true
+mdns = true
+bootstrap_peers = []
