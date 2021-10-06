@@ -104,17 +104,20 @@ pub fn init_network(
             gossiper_config.gossiper.key.clone(),
         );
         let peer_id = libp2p::PeerId::from(peer_key.public());
-        let first_port =
-            SocketAddr::from_str(config.net_address.as_ref().unwrap())
-                .unwrap()
-                .port();
-        let intent_address = libp2p::Multiaddr::from_str(
+        let ledger_addr = SocketAddr::from_str(config.net_address.as_ref().unwrap())
+                .unwrap();
+        let ip = ledger_addr.ip().to_string();
+        let first_port = ledger_addr.port();
+        gossiper_config.address = libp2p::Multiaddr::from_str(
             format!("/ip4/0.0.0.0/tcp/{}", first_port + 3).as_str(),
         )
         .unwrap();
-        gossiper_config.address = intent_address.clone();
+        let intent_peer_address = libp2p::Multiaddr::from_str(
+            format!("/ip4/{}/tcp/{}", ip, first_port + 3).as_str(),
+        )
+        .unwrap();
         let intent_peer = PeerAddress {
-            address: intent_address,
+            address: intent_peer_address,
             peer_id,
         };
 
@@ -359,6 +362,9 @@ pub fn init_network(
     let mut config = Config::load(&global_args.base_dir, &chain_id);
     config.ledger.p2p_persistent_peers = persistent_peers;
     config.ledger.genesis_time = genesis.genesis_time.into();
+    if let Some(discover) = &mut config.intent_gossiper.discover_peer {
+        discover.bootstrap_peers = bootstrap_peers;
+    }
     config
         .write(&global_args.base_dir, &chain_id, true)
         .unwrap();
