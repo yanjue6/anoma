@@ -491,8 +491,8 @@ where
         address: &Self::Address,
         pk: &Self::PublicKey,
     ) {
-        // TODO this should not be hard-coded here, instead it should be provided in a call to this fn
-        // let user_vp =
+        // TODO this should not be hard-coded here, instead it should be
+        // provided in a call to this fn let user_vp =
         //     std::fs::read("wasm/vp_user.wasm").expect("cannot load user VP");
         // // The staking reward accounts are setup with a user VP
         // self.write(&Key::validity_predicate(address), user_vp.to_vec())

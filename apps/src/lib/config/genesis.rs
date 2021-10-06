@@ -224,7 +224,8 @@ pub mod genesis_config {
 
         Validator {
             pos_data: GenesisValidator {
-                address: Address::decode(&config.address.as_ref().unwrap()).unwrap(),
+                address: Address::decode(&config.address.as_ref().unwrap())
+                    .unwrap(),
                 staking_reward_address: Address::decode(
                     &config.staking_reward_address.as_ref().unwrap(),
                 )
@@ -271,7 +272,8 @@ pub mod genesis_config {
         let token_vp_config = wasm.get(token_vp_name).unwrap();
 
         TokenAccount {
-            address: Address::decode(&config.address.as_ref().unwrap()).unwrap(),
+            address: Address::decode(&config.address.as_ref().unwrap())
+                .unwrap(),
             vp_code_path: token_vp_config.filename.to_owned(),
             vp_sha256: token_vp_config.sha256.to_sha256_bytes().unwrap(),
             balances: config
@@ -297,7 +299,8 @@ pub mod genesis_config {
         let account_vp_config = wasm.get(account_vp_name).unwrap();
 
         EstablishedAccount {
-            address: Address::decode(&config.address.as_ref().unwrap()).unwrap(),
+            address: Address::decode(&config.address.as_ref().unwrap())
+                .unwrap(),
             vp_code_path: account_vp_config.filename.to_owned(),
             vp_sha256: account_vp_config.sha256.to_sha256_bytes().unwrap(),
             public_key: match &config.public_key {
@@ -321,7 +324,12 @@ pub mod genesis_config {
 
     fn load_implicit(config: &ImplicitAccountConfig) -> ImplicitAccount {
         ImplicitAccount {
-            public_key: config.public_key.as_ref().unwrap().to_public_key().unwrap(),
+            public_key: config
+                .public_key
+                .as_ref()
+                .unwrap()
+                .to_public_key()
+                .unwrap(),
         }
     }
 
@@ -396,7 +404,10 @@ pub mod genesis_config {
         toml::from_str(&config_file).unwrap()
     }
 
-    pub fn write_genesis_config(config: &GenesisConfig, path: impl AsRef<Path>) {
+    pub fn write_genesis_config(
+        config: &GenesisConfig,
+        path: impl AsRef<Path>,
+    ) {
         let toml = toml::to_string(&config).unwrap();
         std::fs::write(path, toml).unwrap();
     }

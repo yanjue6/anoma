@@ -97,15 +97,21 @@ pub fn init_network(
         ))
         .expect("Validator address must be valid");
         persistent_peers.push(peer);
+
         // Add a Intent gossiper bootstrap peer from the validator's IP
         let mut gossiper_config = IntentGossiper::default();
-        let peer_key = libp2p::identity::Keypair::Ed25519(gossiper_config.gossiper.key.clone());
+        let peer_key = libp2p::identity::Keypair::Ed25519(
+            gossiper_config.gossiper.key.clone(),
+        );
         let peer_id = libp2p::PeerId::from(peer_key.public());
-        let first_port = SocketAddr::from_str(config.net_address.as_ref().unwrap()).unwrap().port();
-        let intent_address =  libp2p::Multiaddr::from_str(
-                format!("/ip4/0.0.0.0/tcp/{}", first_port + 3).as_str(),
-            )
-            .unwrap();
+        let first_port =
+            SocketAddr::from_str(config.net_address.as_ref().unwrap())
+                .unwrap()
+                .port();
+        let intent_address = libp2p::Multiaddr::from_str(
+            format!("/ip4/0.0.0.0/tcp/{}", first_port + 3).as_str(),
+        )
+        .unwrap();
         gossiper_config.address = intent_address.clone();
         let intent_peer = PeerAddress {
             address: intent_address,
@@ -116,16 +122,21 @@ pub fn init_network(
         // The `temp_chain_id` gets renamed after we have chain ID
         let mut wallet = Wallet::load_or_new(&chain_dir);
         let consensus_key_alias = format!("{}-consensus-key", name);
-        let (_alias, consensus_keypair) = wallet.gen_key(Some(consensus_key_alias), unsafe_dont_encrypt);
+        let (_alias, consensus_keypair) =
+            wallet.gen_key(Some(consensus_key_alias), unsafe_dont_encrypt);
         let account_key_alias = format!("{}-account-key", name);
-        let (_alias, account_keypair) = wallet.gen_key(Some(account_key_alias), unsafe_dont_encrypt);
+        let (_alias, account_keypair) =
+            wallet.gen_key(Some(account_key_alias), unsafe_dont_encrypt);
         let reward_key_alias = format!("{}-reward-key", name);
-        let (_alias, reward_keypair) = wallet.gen_key(Some(reward_key_alias), unsafe_dont_encrypt);
+        let (_alias, reward_keypair) =
+            wallet.gen_key(Some(reward_key_alias), unsafe_dont_encrypt);
         // Add the validator public keys to genesis config
-        config.consensus_public_key =
-            Some(genesis_config::HexString(consensus_keypair.public.to_string()));
-        config.account_public_key =
-            Some(genesis_config::HexString(account_keypair.public.to_string()));
+        config.consensus_public_key = Some(genesis_config::HexString(
+            consensus_keypair.public.to_string(),
+        ));
+        config.account_public_key = Some(genesis_config::HexString(
+            account_keypair.public.to_string(),
+        ));
         config.staking_reward_public_key =
             Some(genesis_config::HexString(reward_keypair.public.to_string()));
 
@@ -136,7 +147,8 @@ pub fn init_network(
             &address,
             &consensus_keypair,
         );
-        let reward_address = address::gen_established_address("validator reward account");
+        let reward_address =
+            address::gen_established_address("validator reward account");
         config.address = Some(address.to_string());
         config.staking_reward_address = Some(reward_address.to_string());
 
@@ -242,8 +254,10 @@ pub fn init_network(
     if let Some(implicit) = &mut config.implicit {
         implicit.iter_mut().for_each(|(name, config)| {
             if config.public_key.is_none() {
-                let (_alias, keypair) = wallet.gen_key(Some(name.clone()), unsafe_dont_encrypt);
-                let public_key = genesis_config::HexString(keypair.public.to_string());
+                let (_alias, keypair) =
+                    wallet.gen_key(Some(name.clone()), unsafe_dont_encrypt);
+                let public_key =
+                    genesis_config::HexString(keypair.public.to_string());
                 config.public_key = Some(public_key);
             }
         })
@@ -261,10 +275,7 @@ pub fn init_network(
         .join(format!("{}.toml", chain_id.as_str()));
 
     // Write the genesis file
-    genesis_config::write_genesis_config(
-        &config,
-        &genesis_path,
-    );
+    genesis_config::write_genesis_config(&config, &genesis_path);
 
     // Write the global config setting the default chain ID
     let global_config = GlobalConfig::new(chain_id.clone());
@@ -353,7 +364,10 @@ pub fn init_network(
         .unwrap();
 
     println!("Derived chain ID: {}", chain_id);
-    println!("Genesis file generated at {}", genesis_path.to_string_lossy());
+    println!(
+        "Genesis file generated at {}",
+        genesis_path.to_string_lossy()
+    );
 }
 
 fn init_established_account(
