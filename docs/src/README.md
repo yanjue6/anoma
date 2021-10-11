@@ -10,6 +10,8 @@ Welcome to Anoma's docs!
 ### Anoma's current testnet: Feigenbaum
 Feigenbaum is the name of Anoma's first public testnet. Find `feigenbaum` on [Github](https://github.com/anoma/anoma/releases).
 
+<img src="user-guide/feigenbaum.png" alt="Feigenbaum" width="300"/>
+
 > ⚠️ Here lay dragons: this codebase is still experimental, try at your own risk!
 
 ## About the documentation
