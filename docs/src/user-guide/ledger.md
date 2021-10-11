@@ -6,6 +6,10 @@ To start a local Anoma ledger node, run:
 anoma ledger
 ```
 
+> ⚠️ Running a ledger node currently requires a lot of storage space, possibly over 10GB per day of chain history, depending on actual usage.
+>
+> Currently, there is a lot of redundant data being stored. Expect the storage requirements to go down in future, after some optimization passes. If you don't have enough free space to run the testnet node, you can also connect to a remote ledger node with your client using the `--ledger-address` argument.
+
 The node will attempt to connect to the persistent validator nodes and other peers in the network and synchronize to the latest block.
 
 By default, the ledger will store its configuration and state in the `.anoma` directory relative to the current working directory. You can use `--base-dir` CLI global argument or `ANOMA_BASE_DIR` environment variable to change it.
