@@ -4,19 +4,17 @@ Starting from a release branch, we configure the network that will run on this r
 
 ## Step 1: Prepare a genesis configuration file
 
-Prepare a genesis configuration file. You can start from one of the files inside `genesis` directory or start from scratch. Note that in this file, for any account for which you don't specify address and/or keys, they will be automatically generated in the next step and saved in wallet(s) in the network "setup" directory.
+Prepare a genesis configuration file. You can start from one of the source files in the [anoma-network-config repo](https://github.com/heliaxdev/anoma-network-config/tree/master/src) or the source files inside the `genesis` directory in this repository, or start from scratch. Note that in this file, for any account for which you don't specify address and/or keys, they will be automatically generated in the next step and saved in wallet(s) in the network "setup" directory.
 
-Additionally, for validator accounts you should also specify their `net_address`
-
-Note that for each validator node we're using up to 5 ports (3 for the ledger and 2 for the intent gossip), so if multiple validators are running behind the same public IP, their ports should be increments of 5 (e.g. `26656`, `26661`, ...). A port supplied in the following command will be used for the node's P2P address. The ledger's RPC address address is its `{port + 1}` and the Anoma ledger's port is `{port + 2}`. The intent gossip will run on `{port + 3}` and its RPC server at `{post + 4}`.
+Additionally, for validator accounts you should also specify their `net_address`. Note that for each validator node we're using up to 5 ports (3 for the ledger and 2 for the intent gossip), so if multiple validators are running behind the same public IP, their ports should be increments of 5 (e.g. `26656`, `26661`, ...). A port supplied in the `net_address` will be used for the node's P2P address. The ledger's RPC address address is its `{port + 1}` and the Anoma ledger's port is `{port + 2}`. The intent gossip will run on `{port + 3}` and its RPC server at `{post + 4}`.
 
 In the genesis file, also set the `genesis_time` in [RFC3339](https://www.ietf.org/rfc/rfc3339.txt) format, e.g. `2021-09-30T10:00:00Z`. It's the time the blockchain started or will start. If nodes are started before this time they will sit idle until the time specified.
 
 ## Step 2: Initialize new network using the utils command
 
-- Choose a `chain_prefix` for a new chain ID (e.g. `internal-testnet` or `public-testnet`). Allows up to 19 alphanumeric characters and `.`, `-` and `_`.
+- Choose a `chain_prefix` for a new chain ID (e.g. `anoma-feigenbaum-0`). Allows up to 19 alphanumeric characters and `.`, `-` and `_`.
 - Run `anomac utils init-network --genesis-path genesis/{file_from_last_step}.toml --chain-prefix {chain_prefix}` to:
-  - Generate a new `chain_id` with the chosen `chain_prefix` (up to 19 chars), a separator char `:` and the hash of the concatenated `bin_release_version` and the genesis data, 30 characters long in total (`shared/src/types/chain.rs`)
+  - Generate a new `chain_id` with the chosen `chain_prefix` (up to 19 chars), a separator char `.` and the hash of the genesis data, 30 characters long in total (`shared/src/types/chain.rs`)
   - For each validator (index `n`), prepare the base directory under `{base_dir}/{chain_prefix}/setup/validator_{n}` with:
     - A wallet with the validator's addresses and keys
     - Tendermint config with its private validator key (consensus key) and node key (from which its node ID is derived)
