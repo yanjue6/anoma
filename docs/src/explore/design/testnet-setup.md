@@ -13,7 +13,7 @@ In the genesis file, also set the `genesis_time` in [RFC3339](https://www.ietf.o
 ## Step 2: Initialize new network using the utils command
 
 - Choose a `chain_prefix` for a new chain ID (e.g. `anoma-feigenbaum-0`). Allows up to 19 alphanumeric characters and `.`, `-` and `_`.
-- Run `anomac utils init-network --genesis-path genesis/{file_from_last_step}.toml --chain-prefix {chain_prefix}` to:
+- Run `anomac utils init-network --genesis-path genesis/{file_from_last_step}.toml --chain-prefix {chain_prefix}` to (note that you can also specify other options, for example `--localhost` to setup a local network, `--allow-duplicate-ip` to allow multiple ledger nodes to run under the same IP address, which is useful for testnets):
   - Generate a new `chain_id` with the chosen `chain_prefix` (up to 19 chars), a separator char `.` and the hash of the genesis data, 30 characters long in total (`shared/src/types/chain.rs`)
   - For each validator (index `n`), prepare the base directory under `{base_dir}/{chain_prefix}/setup/validator_{n}` with:
     - A wallet with the validator's addresses and keys
