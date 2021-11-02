@@ -12,8 +12,7 @@ use anoma::types::time::DateTimeUtc;
 use serde_json::json;
 use signal_hook::consts::TERM_SIGNALS;
 use signal_hook::iterator::Signals;
-use tendermint::config::TendermintConfig;
-use tendermint::net;
+use tendermint_config::TendermintConfig;
 use thiserror::Error;
 
 use crate::config;
@@ -24,7 +23,7 @@ pub enum Error {
     #[error("Failed to initialize Tendermint: {0}")]
     Init(std::io::Error),
     #[error("Failed to load Tendermint config file: {0}")]
-    LoadConfig(tendermint::error::Error),
+    LoadConfig(tendermint_config::Error),
     #[error("Failed to open Tendermint config for writing: {0}")]
     OpenWriteConfig(std::io::Error),
     #[error("Failed to serialize Tendermint config TOML to string: {0}")]
@@ -240,9 +239,10 @@ fn update_tendermint_config(
     let mut config =
         TendermintConfig::load_toml_file(&path).map_err(Error::LoadConfig)?;
 
-    config.p2p.laddr =
-        net::Address::from_str(&tendermint_config.p2p_address.to_string())
-            .unwrap();
+    config.p2p.laddr = tendermint_config::net::Address::from_str(
+        &tendermint_config.p2p_address.to_string(),
+    )
+    .unwrap();
     config.p2p.persistent_peers = tendermint_config.p2p_persistent_peers;
     config.p2p.pex = tendermint_config.p2p_pex;
     config.p2p.allow_duplicate_ip = tendermint_config.p2p_allow_duplicate_ip;
@@ -258,9 +258,10 @@ fn update_tendermint_config(
     // again in the future.
     config.mempool.keep_invalid_txs_in_cache = false;
 
-    config.rpc.laddr =
-        net::Address::from_str(&tendermint_config.rpc_address.to_string())
-            .unwrap();
+    config.rpc.laddr = tendermint_config::net::Address::from_str(
+        &tendermint_config.rpc_address.to_string(),
+    )
+    .unwrap();
     // Bumped from the default `1_000_000`, because some WASMs can be
     // quite large
     config.rpc.max_body_bytes = 2_000_000;

@@ -785,7 +785,9 @@ pub mod wrapper_tx {
             assert_eq!(
                 err,
                 WrapperTxErr::SigError(
-                    "Signature verification failed: signature error".into()
+                    "Signature verification failed: signature error: \
+                     Verification equation was not satisfied"
+                        .into()
                 )
             );
         }

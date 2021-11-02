@@ -20,7 +20,6 @@ use libp2p::multihash::Multihash;
 use libp2p::PeerId;
 use regex::Regex;
 use serde::{de, Deserialize, Serialize};
-use tendermint::net;
 use thiserror::Error;
 
 use crate::cli;
@@ -60,7 +59,7 @@ pub struct Tendermint {
     pub rpc_address: SocketAddr,
     pub p2p_address: SocketAddr,
     /// The persistent peers addresses must include node ID
-    pub p2p_persistent_peers: Vec<tendermint::net::Address>,
+    pub p2p_persistent_peers: Vec<tendermint_config::net::Address>,
     /// Turns the peer exchange reactor on or off. Validator node will want the
     /// pex turned off.
     pub p2p_pex: bool,
@@ -148,7 +147,7 @@ pub struct RpcServer {
 pub struct Matchmaker {
     pub matchmaker: PathBuf,
     pub tx_code: PathBuf,
-    pub ledger_address: net::Address,
+    pub ledger_address: tendermint_config::net::Address,
     pub filter: Option<PathBuf>,
 }
 
@@ -327,7 +326,7 @@ impl IntentGossiper {
         rpc: Option<SocketAddr>,
         matchmaker_path: Option<PathBuf>,
         tx_code_path: Option<PathBuf>,
-        ledger_addr: Option<tendermint::net::Address>,
+        ledger_addr: Option<tendermint_config::net::Address>,
         filter_path: Option<PathBuf>,
     ) {
         if let Some(addr) = addr {

@@ -20,17 +20,19 @@ use anoma::types::address::{Address, InternalAddress};
 pub use anoma::types::ibc::*;
 use anoma::types::storage::Key;
 use anoma_vm_env::tx_prelude::BorshSerialize;
-use ibc::ics02_client::client_consensus::ConsensusState;
-use ibc::ics02_client::client_state::{AnyClientState, ClientState};
-use ibc::ics02_client::header::Header;
-use ibc::ics03_connection::connection::Counterparty as ConnCounterparty;
-use ibc::ics03_connection::version::Version;
-use ibc::ics04_channel::channel::{
+use ibc::core::ics02_client::client_consensus::ConsensusState;
+use ibc::core::ics02_client::client_state::{AnyClientState, ClientState};
+use ibc::core::ics02_client::header::Header;
+use ibc::core::ics03_connection::connection::Counterparty as ConnCounterparty;
+use ibc::core::ics03_connection::version::Version;
+use ibc::core::ics04_channel::channel::{
     ChannelEnd, Counterparty as ChanCounterparty, Order,
 };
-use ibc::ics04_channel::packet::{Packet, Sequence};
-use ibc::ics23_commitment::commitment::CommitmentProofBytes;
-use ibc::ics24_host::identifier::{ChannelId, ClientId, ConnectionId, PortId};
+use ibc::core::ics04_channel::packet::{Packet, Sequence};
+use ibc::core::ics23_commitment::commitment::CommitmentProofBytes;
+use ibc::core::ics24_host::identifier::{
+    ChannelId, ClientId, ConnectionId, PortId,
+};
 use ibc::mock::client_state::{MockClientState, MockConsensusState};
 use ibc::mock::header::MockHeader;
 use ibc::timestamp::Timestamp;
@@ -86,7 +88,8 @@ pub fn tm_dummy_header() -> TmHeader {
             .expect("Creating an TmChainId shouldn't fail"),
         height: TmHeight::try_from(10_u64)
             .expect("Creating a height shouldn't fail"),
-        time: TmTime::now(),
+        time: TmTime::from_str("2021-11-01T18:14:32.024837Z")
+            .expect("Setting the time shouldn't fail"),
         last_block_id: None,
         last_commit_hash: None,
         data_hash: None,

@@ -2,13 +2,13 @@
 
 use std::str::FromStr;
 
-use ibc::ics02_client::height::Height;
-use ibc::ics04_channel::packet::Sequence;
-use ibc::ics05_port::capabilities::Capability;
-use ibc::ics24_host::identifier::{
+use ibc::core::ics02_client::height::Height;
+use ibc::core::ics04_channel::packet::Sequence;
+use ibc::core::ics05_port::capabilities::Capability;
+use ibc::core::ics24_host::identifier::{
     ChannelId, ClientId, ConnectionId, PortChannelId, PortId,
 };
-use ibc::ics24_host::Path;
+use ibc::core::ics24_host::Path;
 use thiserror::Error;
 
 use crate::types::address::{Address, InternalAddress};
@@ -264,9 +264,13 @@ pub fn ack_key(
 /// Returns a client ID from the given client key `#IBC/clients/<client_id>`
 pub fn client_id(key: &Key) -> Result<ClientId> {
     match &key.segments[..] {
-        [DbKeySeg::AddressSeg(addr), DbKeySeg::StringSeg(prefix), DbKeySeg::StringSeg(client_id), ..]
-            if addr == &Address::Internal(InternalAddress::Ibc)
-                && prefix == "clients" =>
+        [
+            DbKeySeg::AddressSeg(addr),
+            DbKeySeg::StringSeg(prefix),
+            DbKeySeg::StringSeg(client_id),
+            ..,
+        ] if addr == &Address::Internal(InternalAddress::Ibc)
+            && prefix == "clients" =>
         {
             ClientId::from_str(&client_id.raw())
                 .map_err(|e| Error::InvalidKey(e.to_string()))
@@ -282,9 +286,12 @@ pub fn client_id(key: &Key) -> Result<ClientId> {
 /// `#IBC/connections/<conn_id>`
 pub fn connection_id(key: &Key) -> Result<ConnectionId> {
     match &key.segments[..] {
-        [DbKeySeg::AddressSeg(addr), DbKeySeg::StringSeg(prefix), DbKeySeg::StringSeg(conn_id)]
-            if addr == &Address::Internal(InternalAddress::Ibc)
-                && prefix == "connections" =>
+        [
+            DbKeySeg::AddressSeg(addr),
+            DbKeySeg::StringSeg(prefix),
+            DbKeySeg::StringSeg(conn_id),
+        ] if addr == &Address::Internal(InternalAddress::Ibc)
+            && prefix == "connections" =>
         {
             ConnectionId::from_str(&conn_id.raw())
                 .map_err(|e| Error::InvalidKey(e.to_string()))
@@ -300,14 +307,20 @@ pub fn connection_id(key: &Key) -> Result<ConnectionId> {
 /// `#IBC/<prefix>/ports/<port_id>/channels/<channel_id>`
 pub fn port_channel_id(key: &Key) -> Result<PortChannelId> {
     match &key.segments[..] {
-        [DbKeySeg::AddressSeg(addr), DbKeySeg::StringSeg(prefix), DbKeySeg::StringSeg(module0), DbKeySeg::StringSeg(port), DbKeySeg::StringSeg(module1), DbKeySeg::StringSeg(channel)]
-            if addr == &Address::Internal(InternalAddress::Ibc)
-                && (prefix == "channelEnds"
-                    || prefix == "nextSequenceSend"
-                    || prefix == "nextSequenceRecv"
-                    || prefix == "nextSequenceAck")
-                && module0 == "ports"
-                && module1 == "channels" =>
+        [
+            DbKeySeg::AddressSeg(addr),
+            DbKeySeg::StringSeg(prefix),
+            DbKeySeg::StringSeg(module0),
+            DbKeySeg::StringSeg(port),
+            DbKeySeg::StringSeg(module1),
+            DbKeySeg::StringSeg(channel),
+        ] if addr == &Address::Internal(InternalAddress::Ibc)
+            && (prefix == "channelEnds"
+                || prefix == "nextSequenceSend"
+                || prefix == "nextSequenceRecv"
+                || prefix == "nextSequenceAck")
+            && module0 == "ports"
+            && module1 == "channels" =>
         {
             let port_id = PortId::from_str(&port.raw())
                 .map_err(|e| Error::InvalidKey(e.to_string()))?;
@@ -332,14 +345,22 @@ pub fn port_channel_sequence_id(
     key: &Key,
 ) -> Result<(PortId, ChannelId, Sequence)> {
     match &key.segments[..] {
-        [DbKeySeg::AddressSeg(addr), DbKeySeg::StringSeg(prefix), DbKeySeg::StringSeg(module0), DbKeySeg::StringSeg(port_id), DbKeySeg::StringSeg(module1), DbKeySeg::StringSeg(channel_id), DbKeySeg::StringSeg(module2), DbKeySeg::StringSeg(seq_index)]
-            if addr == &Address::Internal(InternalAddress::Ibc)
-                && (prefix == "commitments"
-                    || prefix == "receipts"
-                    || prefix == "acks")
-                && module0 == "ports"
-                && module1 == "channels"
-                && module2 == "sequences" =>
+        [
+            DbKeySeg::AddressSeg(addr),
+            DbKeySeg::StringSeg(prefix),
+            DbKeySeg::StringSeg(module0),
+            DbKeySeg::StringSeg(port_id),
+            DbKeySeg::StringSeg(module1),
+            DbKeySeg::StringSeg(channel_id),
+            DbKeySeg::StringSeg(module2),
+            DbKeySeg::StringSeg(seq_index),
+        ] if addr == &Address::Internal(InternalAddress::Ibc)
+            && (prefix == "commitments"
+                || prefix == "receipts"
+                || prefix == "acks")
+            && module0 == "ports"
+            && module1 == "channels"
+            && module2 == "sequences" =>
         {
             let port_id = PortId::from_str(&port_id.raw())
                 .map_err(|e| Error::InvalidKey(e.to_string()))?;
@@ -360,9 +381,13 @@ pub fn port_channel_sequence_id(
 /// Returns a port ID from the given port key `#IBC/ports/<port_id>`
 pub fn port_id(key: &Key) -> Result<PortId> {
     match &key.segments[..] {
-        [DbKeySeg::AddressSeg(addr), DbKeySeg::StringSeg(prefix), DbKeySeg::StringSeg(port_id), ..]
-            if addr == &Address::Internal(InternalAddress::Ibc)
-                && prefix == "ports" =>
+        [
+            DbKeySeg::AddressSeg(addr),
+            DbKeySeg::StringSeg(prefix),
+            DbKeySeg::StringSeg(port_id),
+            ..,
+        ] if addr == &Address::Internal(InternalAddress::Ibc)
+            && prefix == "ports" =>
         {
             PortId::from_str(&port_id.raw())
                 .map_err(|e| Error::InvalidKey(e.to_string()))
@@ -378,9 +403,13 @@ pub fn port_id(key: &Key) -> Result<PortId> {
 /// `#IBC/capabilities/<index>`
 pub fn capability(key: &Key) -> Result<Capability> {
     match &key.segments[..] {
-        [DbKeySeg::AddressSeg(addr), DbKeySeg::StringSeg(prefix), DbKeySeg::StringSeg(index), ..]
-            if addr == &Address::Internal(InternalAddress::Ibc)
-                && prefix == "capabilities" =>
+        [
+            DbKeySeg::AddressSeg(addr),
+            DbKeySeg::StringSeg(prefix),
+            DbKeySeg::StringSeg(index),
+            ..,
+        ] if addr == &Address::Internal(InternalAddress::Ibc)
+            && prefix == "capabilities" =>
         {
             let index: u64 = index.raw().parse().map_err(|e| {
                 Error::InvalidPortCapability(format!(

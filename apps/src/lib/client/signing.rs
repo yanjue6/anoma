@@ -15,7 +15,7 @@ use crate::wallet::Wallet;
 pub async fn find_keypair(
     wallet: &mut Wallet,
     addr: &Address,
-    ledger_address: tendermint::net::Address,
+    ledger_address: tendermint_config::net::Address,
 ) -> Rc<Keypair> {
     match addr {
         Address::Established(_) => {

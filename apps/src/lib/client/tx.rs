@@ -736,7 +736,7 @@ async fn save_initialized_accounts(
 }
 
 pub async fn broadcast_tx(
-    address: tendermint::net::Address,
+    address: tendermint_config::net::Address,
     tx_bytes: Vec<u8>,
 ) -> Result<TxResponse, Error> {
     let mut client = TendermintWebsocketClient::open(

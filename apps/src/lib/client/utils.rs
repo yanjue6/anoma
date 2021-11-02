@@ -77,7 +77,7 @@ pub fn init_network(
 
     let mut rng: ThreadRng = thread_rng();
 
-    let mut persistent_peers: Vec<tendermint::net::Address> =
+    let mut persistent_peers: Vec<tendermint_config::net::Address> =
         Vec::with_capacity(config.validator.len());
     // Intent gossiper config bootstrap peers where we'll add the address for
     // each validator's node
@@ -132,7 +132,7 @@ pub fn init_network(
         tendermint_node::write_validator_state(&tm_home_dir);
 
         // Build the list of persistent peers from the validators' node IDs
-        let peer = tendermint::net::Address::from_str(&format!(
+        let peer = tendermint_config::net::Address::from_str(&format!(
             "{}@{}",
             node_id,
             config.net_address.as_ref().unwrap(),
@@ -235,10 +235,9 @@ pub fn init_network(
                             .insert(account.clone(), matchmaker);
 
                         let ledger_address =
-                            tendermint::net::Address::from_str(&format!(
-                                "127.0.0.1:{}",
-                                first_port + 1
-                            ))
+                            tendermint_config::net::Address::from_str(
+                                &format!("127.0.0.1:{}", first_port + 1),
+                            )
                             .unwrap();
                         gossiper_config.matchmaker = Some(config::Matchmaker {
                             matchmaker: mm_code.clone().into(),

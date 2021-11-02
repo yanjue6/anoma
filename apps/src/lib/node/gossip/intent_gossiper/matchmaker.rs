@@ -8,7 +8,6 @@ use anoma::types::intent::{IntentTransfers, MatchedExchanges};
 use anoma::types::key::ed25519::Keypair;
 use anoma::vm::wasm;
 use borsh::{BorshDeserialize, BorshSerialize};
-use tendermint::net;
 use thiserror::Error;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
@@ -32,7 +31,7 @@ pub struct Matchmaker {
     /// the matchmaker's state as arbitrary bytes
     state: Vec<u8>,
     /// The ledger address to send any crafted transaction to
-    ledger_address: net::Address,
+    ledger_address: tendermint_config::net::Address,
     /// The WASM host allows the WASM runtime to send messages back to this
     /// matchmaker
     wasm_host: WasmHost,

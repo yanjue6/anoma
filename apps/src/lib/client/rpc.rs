@@ -674,7 +674,7 @@ pub async fn query_slashes(ctx: Context, args: args::QuerySlashes) {
 
 /// Dry run a transaction
 pub async fn dry_run_tx(
-    ledger_address: &tendermint::net::Address,
+    ledger_address: &tendermint_config::net::Address,
     tx_bytes: Vec<u8>,
 ) {
     let client = HttpClient::new(ledger_address.clone()).unwrap();
@@ -689,7 +689,7 @@ pub async fn dry_run_tx(
 /// Get account's public key stored in its storage sub-space
 pub async fn get_public_key(
     address: &Address,
-    ledger_address: tendermint::net::Address,
+    ledger_address: tendermint_config::net::Address,
 ) -> Option<ed25519::PublicKey> {
     let client = HttpClient::new(ledger_address).unwrap();
     let key = ed25519::pk_key(address);
@@ -699,7 +699,7 @@ pub async fn get_public_key(
 /// Check if the given address is a known validator.
 pub async fn is_validator(
     address: &Address,
-    ledger_address: tendermint::net::Address,
+    ledger_address: tendermint_config::net::Address,
 ) -> bool {
     let client = HttpClient::new(ledger_address).unwrap();
     // Check if there's any validator state
@@ -716,7 +716,7 @@ pub async fn is_validator(
 /// true.
 pub async fn known_address(
     address: &Address,
-    ledger_address: tendermint::net::Address,
+    ledger_address: tendermint_config::net::Address,
 ) -> bool {
     let client = HttpClient::new(ledger_address).unwrap();
     match address {

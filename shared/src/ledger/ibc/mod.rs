@@ -11,7 +11,7 @@ pub mod storage;
 use std::collections::HashSet;
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use ibc::ics02_client::context::ClientReader;
+use ibc::core::ics02_client::context::ClientReader;
 use storage::{
     capability_index_key, channel_counter_key, client_counter_key, client_id,
     connection_counter_key, ibc_prefix, is_client_counter_key, IbcPrefix,
@@ -115,7 +115,12 @@ where
             match ibc_prefix(key) {
                 IbcPrefix::Client => {
                     if is_client_counter_key(key) {
-                        if self.client_counter_pre()? >= self.client_counter() {
+                        let counter = self.client_counter().map_err(|_| {
+                            Error::CounterError(
+                                "The client counter doesn't exist".to_owned(),
+                            )
+                        })?;
+                        if self.client_counter_pre()? >= counter {
                             return Err(Error::CounterError(
                                 "The client counter is invalid".to_owned(),
                             ));
@@ -193,29 +198,35 @@ where
         match self.ctx.read_pre(key) {
             Ok(Some(value)) => u64::try_from_slice(&value[..]).map_err(|e| {
                 Error::CounterError(format!(
-                    "Decoding the client counter failed: {}",
+                    "Decoding the counter failed: {}",
                     e
                 ))
             }),
-            _ => Err(Error::CounterError(
-                "The client counter doesn't exist".to_owned(),
-            )),
+            Ok(None) => {
+                Err(Error::CounterError("The counter doesn't exist".to_owned()))
+            }
+            Err(e) => Err(Error::CounterError(format!(
+                "Reading the counter failed: {}",
+                e
+            ))),
         }
     }
 
-    fn read_counter(&self, key: &Key) -> u64 {
+    fn read_counter(&self, key: &Key) -> Result<u64> {
         match self.ctx.read_post(key) {
-            Ok(Some(value)) => match u64::try_from_slice(&value[..]) {
-                Ok(c) => c,
-                Err(e) => {
-                    tracing::error!("decoding a counter failed: {}", e);
-                    u64::MIN
-                }
-            },
-            _ => {
-                tracing::error!("the counter doesn't exist");
-                unreachable!();
+            Ok(Some(value)) => u64::try_from_slice(&value[..]).map_err(|e| {
+                Error::CounterError(format!(
+                    "Decoding the counter failed: {}",
+                    e
+                ))
+            }),
+            Ok(None) => {
+                Err(Error::CounterError("The counter doesn't exist".to_owned()))
             }
+            Err(e) => Err(Error::CounterError(format!(
+                "Reading the counter failed: {}",
+                e
+            ))),
         }
     }
 }
@@ -270,22 +281,22 @@ mod tests {
 
     use borsh::ser::BorshSerialize;
     use chrono::Utc;
-    use ibc::ics02_client::client_consensus::ConsensusState;
-    use ibc::ics02_client::client_state::ClientState;
-    use ibc::ics02_client::client_type::ClientType;
-    use ibc::ics02_client::header::AnyHeader;
-    use ibc::ics03_connection::connection::{
+    use ibc::core::ics02_client::client_consensus::ConsensusState;
+    use ibc::core::ics02_client::client_state::ClientState;
+    use ibc::core::ics02_client::client_type::ClientType;
+    use ibc::core::ics02_client::header::AnyHeader;
+    use ibc::core::ics03_connection::connection::{
         ConnectionEnd, Counterparty as ConnCounterparty, State as ConnState,
     };
-    use ibc::ics03_connection::version::Version;
-    use ibc::ics04_channel::channel::{
+    use ibc::core::ics03_connection::version::Version;
+    use ibc::core::ics04_channel::channel::{
         ChannelEnd, Counterparty as ChanCounterparty, Order, State as ChanState,
     };
-    use ibc::ics04_channel::packet::{Packet, Sequence};
-    use ibc::ics23_commitment::commitment::{
+    use ibc::core::ics04_channel::packet::{Packet, Sequence};
+    use ibc::core::ics23_commitment::commitment::{
         CommitmentPrefix, CommitmentProofBytes,
     };
-    use ibc::ics24_host::identifier::{
+    use ibc::core::ics24_host::identifier::{
         ChannelId, ClientId, ConnectionId, PortChannelId, PortId,
     };
     use ibc::mock::client_state::{MockClientState, MockConsensusState};
@@ -374,7 +385,8 @@ mod tests {
                 .expect("Creating an TmChainId shouldn't fail"),
             height: TmHeight::try_from(10_u64)
                 .expect("Creating a height shouldn't fail"),
-            time: TmTime::now(),
+            time: TmTime::from_str("2021-11-01T18:14:32.024837Z")
+                .expect("Setting the time shouldn't fail"),
             last_block_id: None,
             last_commit_hash: None,
             data_hash: None,

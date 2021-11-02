@@ -1,13 +1,14 @@
 //! IBC validity predicate for client module
 
 use borsh::BorshDeserialize;
-use ibc::ics02_client::client_consensus::AnyConsensusState;
-use ibc::ics02_client::client_def::{AnyClient, ClientDef};
-use ibc::ics02_client::client_state::AnyClientState;
-use ibc::ics02_client::client_type::ClientType;
-use ibc::ics02_client::context::ClientReader;
-use ibc::ics02_client::height::Height;
-use ibc::ics24_host::identifier::ClientId;
+use ibc::core::ics02_client::client_consensus::AnyConsensusState;
+use ibc::core::ics02_client::client_def::{AnyClient, ClientDef};
+use ibc::core::ics02_client::client_state::AnyClientState;
+use ibc::core::ics02_client::client_type::ClientType;
+use ibc::core::ics02_client::context::ClientReader;
+use ibc::core::ics02_client::error::Error as Ics02Error;
+use ibc::core::ics02_client::height::Height;
+use ibc::core::ics24_host::identifier::ClientId;
 use thiserror::Error;
 
 use super::storage::{
@@ -32,12 +33,16 @@ pub enum Error {
     ProofVerificationFailure(String),
     #[error("Decoding TX data error: {0}")]
     DecodingTxData(std::io::Error),
+    #[error("Decoding client data error: {0}")]
+    DecodingClientData(std::io::Error),
     #[error("IBC data error: {0}")]
     InvalidIbcData(IbcDataError),
 }
 
 /// IBC client functions result
 pub type Result<T> = std::result::Result<T, Error>;
+/// ClientReader result
+type Ics02Result<T> = core::result::Result<T, Ics02Error>;
 
 impl<'a, DB, H> Ibc<'a, DB, H>
 where
@@ -71,14 +76,14 @@ where
     }
 
     fn validate_created_client(&self, client_id: &ClientId) -> Result<()> {
-        let client_type = self.client_type(client_id).ok_or_else(|| {
+        let client_type = self.client_type(client_id).map_err(|_| {
             Error::InvalidClient(format!(
                 "The client type doesn't exist: ID {}",
                 client_id
             ))
         })?;
         let client_state = ClientReader::client_state(self, client_id)
-            .ok_or_else(|| {
+            .map_err(|_| {
                 Error::InvalidClient(format!(
                     "The client state doesn't exist: ID {}",
                     client_id
@@ -86,7 +91,7 @@ where
             })?;
         let height = client_state.latest_height();
         let consensus_state =
-            self.consensus_state(client_id, height).ok_or_else(|| {
+            self.consensus_state(client_id, height).map_err(|_| {
                 Error::InvalidClient(format!(
                     "The consensus state doesn't exist: ID {}, Height {}",
                     client_id, height
@@ -136,7 +141,7 @@ where
 
         // check the posterior states
         let client_state = ClientReader::client_state(self, client_id)
-            .ok_or_else(|| {
+            .map_err(|_| {
                 Error::InvalidClient(format!(
                     "The client state doesn't exist: ID {}",
                     client_id
@@ -144,7 +149,7 @@ where
             })?;
         let height = client_state.latest_height();
         let consensus_state =
-            self.consensus_state(client_id, height).ok_or_else(|| {
+            self.consensus_state(client_id, height).map_err(|_| {
                 Error::InvalidClient(format!(
                     "The consensus state doesn't exist: ID {}, Height {}",
                     client_id, height
@@ -162,6 +167,8 @@ where
             (prev_client_state, prev_consensus_state),
             |(new_client_state, _), header| {
                 client.check_header_and_update_state(
+                    self,
+                    client_id.clone(),
                     new_client_state,
                     header.clone(),
                 )
@@ -202,7 +209,7 @@ where
 
         // check the posterior states
         let client_state_post = ClientReader::client_state(self, client_id)
-            .ok_or_else(|| {
+            .map_err(|_| {
                 Error::InvalidClient(format!(
                     "The client state doesn't exist: ID {}",
                     client_id
@@ -210,7 +217,7 @@ where
             })?;
         let height = client_state_post.latest_height();
         let consensus_state_post =
-            self.consensus_state(client_id, height).ok_or_else(|| {
+            self.consensus_state(client_id, height).map_err(|_| {
                 Error::InvalidClient(format!(
                     "The consensus state doesn't exist: ID {}, Height {}",
                     client_id, height
@@ -222,7 +229,7 @@ where
         let consensus_state = data.consensus_state.clone();
         let client_proof = data.proof_client()?;
         let consensus_proof = data.proof_consensus_state()?;
-        let client_type = self.client_type(client_id).ok_or_else(|| {
+        let client_type = self.client_type(client_id).map_err(|_| {
             Error::InvalidClient(format!(
                 "The client type doesn't exist: ID {}",
                 client_id
@@ -304,21 +311,26 @@ where
     DB: 'static + storage::DB + for<'iter> storage::DBIter<'iter>,
     H: 'static + StorageHasher,
 {
-    fn client_type(&self, client_id: &ClientId) -> Option<ClientType> {
+    fn client_type(&self, client_id: &ClientId) -> Ics02Result<ClientType> {
         let key = client_type_key(client_id);
         match self.ctx.read_post(&key) {
-            Ok(Some(value)) => ClientType::try_from_slice(&value[..]).ok(),
-            // returns None even if DB read fails
-            _ => None,
+            Ok(Some(value)) => ClientType::try_from_slice(&value[..])
+                .map_err(|_| Ics02Error::implementation_specific()),
+            Ok(None) => Err(Ics02Error::client_not_found(client_id.clone())),
+            Err(_) => Err(Ics02Error::implementation_specific()),
         }
     }
 
-    fn client_state(&self, client_id: &ClientId) -> Option<AnyClientState> {
+    fn client_state(
+        &self,
+        client_id: &ClientId,
+    ) -> Ics02Result<AnyClientState> {
         let key = client_state_key(client_id);
         match self.ctx.read_post(&key) {
-            Ok(Some(value)) => AnyClientState::try_from_slice(&value[..]).ok(),
-            // returns None even if DB read fails
-            _ => None,
+            Ok(Some(value)) => AnyClientState::try_from_slice(&value[..])
+                .map_err(|_| Ics02Error::implementation_specific()),
+            Ok(None) => Err(Ics02Error::client_not_found(client_id.clone())),
+            Err(_) => Err(Ics02Error::implementation_specific()),
         }
     }
 
@@ -326,20 +338,79 @@ where
         &self,
         client_id: &ClientId,
         height: Height,
-    ) -> Option<AnyConsensusState> {
+    ) -> Ics02Result<AnyConsensusState> {
         let key = consensus_state_key(client_id, height);
         match self.ctx.read_post(&key) {
-            Ok(Some(value)) => {
-                AnyConsensusState::try_from_slice(&value[..]).ok()
-            }
-            // returns None even if DB read fails
-            _ => None,
+            Ok(Some(value)) => AnyConsensusState::try_from_slice(&value[..])
+                .map_err(|_| Ics02Error::implementation_specific()),
+            Ok(None) => Err(Ics02Error::consensus_state_not_found(
+                client_id.clone(),
+                height,
+            )),
+            Err(_) => Err(Ics02Error::implementation_specific()),
         }
     }
 
-    fn client_counter(&self) -> u64 {
+    /// Search for the lowest consensus state higher than `height`.
+    fn next_consensus_state(
+        &self,
+        client_id: &ClientId,
+        height: Height,
+    ) -> Ics02Result<Option<AnyConsensusState>> {
+        let mut h = height.increment();
+        loop {
+            match self.consensus_state(client_id, h) {
+                Ok(cs) => return Ok(Some(cs)),
+                Err(e)
+                    if e.detail()
+                        == Ics02Error::consensus_state_not_found(
+                            client_id.clone(),
+                            h,
+                        )
+                        .detail() =>
+                {
+                    h = h.increment()
+                }
+                _ => return Err(Ics02Error::implementation_specific()),
+            }
+        }
+    }
+
+    /// Search for the highest consensus state lower than `height`.
+    fn prev_consensus_state(
+        &self,
+        client_id: &ClientId,
+        height: Height,
+    ) -> Ics02Result<Option<AnyConsensusState>> {
+        let mut h = match height.decrement() {
+            Ok(prev) => prev,
+            Err(_) => return Ok(None),
+        };
+        loop {
+            match self.consensus_state(client_id, h) {
+                Ok(cs) => return Ok(Some(cs)),
+                Err(e)
+                    if e.detail()
+                        == Ics02Error::consensus_state_not_found(
+                            client_id.clone(),
+                            h,
+                        )
+                        .detail() =>
+                {
+                    h = match height.decrement() {
+                        Ok(prev) => prev,
+                        Err(_) => return Ok(None),
+                    };
+                }
+                _ => return Err(Ics02Error::implementation_specific()),
+            }
+        }
+    }
+
+    fn client_counter(&self) -> Ics02Result<u64> {
         let key = client_counter_key();
         self.read_counter(&key)
+            .map_err(|_| Ics02Error::implementation_specific())
     }
 }
 

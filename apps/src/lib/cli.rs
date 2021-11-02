@@ -1121,14 +1121,15 @@ pub mod args {
     const LEDGER_ADDRESS_ABOUT: &str =
         "Address of a ledger node as \"{scheme}://{host}:{port}\". If the \
          scheme is not supplied, it is assumed to be TCP.";
-    const LEDGER_ADDRESS_DEFAULT: ArgDefault<tendermint::net::Address> =
+    const LEDGER_ADDRESS_DEFAULT: ArgDefault<tendermint_config::net::Address> =
         LEDGER_ADDRESS.default(DefaultFn(|| {
             let raw = "127.0.0.1:26657";
-            tendermint::net::Address::from_str(raw).unwrap()
+            tendermint_config::net::Address::from_str(raw).unwrap()
         }));
-    const LEDGER_ADDRESS_OPT: ArgOpt<tendermint::net::Address> =
+    const LEDGER_ADDRESS_OPT: ArgOpt<tendermint_config::net::Address> =
         LEDGER_ADDRESS.opt();
-    const LEDGER_ADDRESS: Arg<tendermint::net::Address> = arg("ledger-address");
+    const LEDGER_ADDRESS: Arg<tendermint_config::net::Address> =
+        arg("ledger-address");
     const LOCALHOST: ArgFlag = flag("localhost");
     const MATCHMAKER_PATH: ArgOpt<PathBuf> = arg_opt("matchmaker-path");
     const MULTIADDR_OPT: ArgOpt<Multiaddr> = arg_opt("address");
@@ -1769,7 +1770,7 @@ pub mod args {
         /// Exchanges description
         pub exchanges: Vec<Exchange>,
         /// The address of the ledger node as host:port
-        pub ledger_address: tendermint::net::Address,
+        pub ledger_address: tendermint_config::net::Address,
         /// Print output to stdout
         pub to_stdout: bool,
     }
@@ -1892,7 +1893,7 @@ pub mod args {
         pub rpc: Option<SocketAddr>,
         pub matchmaker_path: Option<PathBuf>,
         pub tx_code_path: Option<PathBuf>,
-        pub ledger_addr: Option<tendermint::net::Address>,
+        pub ledger_addr: Option<tendermint_config::net::Address>,
         pub filter_path: Option<PathBuf>,
         pub tx_signing_key: Option<WalletKeypair>,
         pub tx_source_address: Option<WalletAddress>,
@@ -1970,7 +1971,7 @@ pub mod args {
         /// Submit the transaction even if it doesn't pass client checks
         pub force: bool,
         /// The address of the ledger node as host:port
-        pub ledger_address: tendermint::net::Address,
+        pub ledger_address: tendermint_config::net::Address,
         /// If any new account is initialized by the tx, use the given alias to
         /// save it in the wallet.
         pub initialized_account_alias: Option<String>,
@@ -2040,7 +2041,7 @@ pub mod args {
     #[derive(Clone, Debug)]
     pub struct Query {
         /// The address of the ledger node as host:port
-        pub ledger_address: tendermint::net::Address,
+        pub ledger_address: tendermint_config::net::Address,
     }
 
     impl Args for Query {

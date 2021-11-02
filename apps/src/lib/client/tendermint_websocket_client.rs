@@ -8,7 +8,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use sha2::{Digest, Sha256};
 use tendermint::abci::transaction;
-use tendermint::net::Address;
+use tendermint_config::net::Address;
 use tendermint_rpc::query::Query;
 use tendermint_rpc::{Client, Request, Response, SimpleRequest};
 use thiserror::Error;
@@ -19,7 +19,7 @@ use websocket::{ClientBuilder, Message, OwnedMessage};
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Could not convert into websocket address: {0:?}")]
-    Address(tendermint::net::Address),
+    Address(tendermint_config::net::Address),
     #[error("Websocket Error: {0:?}")]
     Websocket(WebSocketError),
     #[error("Failed to subscribe to the event: {0}")]
@@ -153,7 +153,7 @@ pub struct WebSocketAddress {
     port: u16,
 }
 
-impl TryFrom<tendermint::net::Address> for WebSocketAddress {
+impl TryFrom<tendermint_config::net::Address> for WebSocketAddress {
     type Error = Error;
 
     fn try_from(value: Address) -> Result<Self, Self::Error> {
@@ -386,12 +386,13 @@ impl Client for TendermintWebsocketClient {
         let mut websocket = self.websocket.lock().unwrap();
         let start = Instant::now();
         loop {
-            if Instant::now().duration_since(start) > self.connection_timeout {
+            let duration = Instant::now().duration_since(start);
+            if duration > self.connection_timeout {
                 tracing::error!(
                     "Websocket connection timed out while waiting for response"
                 );
-                return Err(tendermint_rpc::error::Error::websocket_error(
-                    Error::ConnectionTimeout.to_string(),
+                return Err(tendermint_rpc::error::Error::web_socket_timeout(
+                    duration,
                 ));
             }
             let response = match websocket

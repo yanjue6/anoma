@@ -99,7 +99,7 @@ pub async fn subscribe_topic(
 async fn sign_exchange(
     wallet: &mut Wallet,
     exchange: Exchange,
-    ledger_address: tendermint::net::Address,
+    ledger_address: tendermint_config::net::Address,
 ) -> Signed<Exchange> {
     let source_keypair =
         signing::find_keypair(wallet, &exchange.addr, ledger_address).await;
