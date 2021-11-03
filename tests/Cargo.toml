@@ -16,7 +16,8 @@ anoma = {path = "../shared", features = ["testing", "ibc-vp"]}
 anoma_vm_env = {path = "../vm_env"}
 chrono = "0.4.19"
 concat-idents = "1.1.2"
-# TODO temp fork for https://github.com/informalsystems/ibc-rs/issues/1161
+# TODO temp fork for borsh coding
+# Also, using the same version of tendermint-rs as we do here.
 ibc = {git = "https://github.com/heliaxdev/ibc-rs", branch = "yuji/rebase_v0.23.0", features = ["mocks", "borsh"]}
 ibc-proto = {git = "https://github.com/heliaxdev/ibc-rs", branch = "yuji/rebase_v0.23.0"}
 test-env-log = {version = "0.2.7", default-features = false, features = ["trace"]}

@@ -41,13 +41,13 @@ impl Serialize for StoredKeypair {
                 let keypair_string = format!(
                     "{}{}",
                     ENCRYPTED_KEY_PREFIX,
-                    encrypted.to_string()
+                    encrypted
                 );
                 serde::Serialize::serialize(&keypair_string, serializer)
             }
             StoredKeypair::Raw(raw) => {
                 let keypair_string =
-                    format!("{}{}", UNENCRYPTED_KEY_PREFIX, raw.to_string());
+                    format!("{}{}", UNENCRYPTED_KEY_PREFIX, raw);
                 serde::Serialize::serialize(&keypair_string, serializer)
             }
         }

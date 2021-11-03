@@ -47,7 +47,7 @@ pub fn run(
 
     // Start the rpc socket, if enabled in the config
     let rpc_event_receiver =
-        config.rpc.as_ref().map(|rpc| rpc::start_rpc_server(rpc));
+        config.rpc.as_ref().map(rpc::start_rpc_server);
 
     dispatcher(gossip, intent_gossip_app, rpc_event_receiver)
 }

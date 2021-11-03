@@ -103,6 +103,7 @@ pub struct Shell {
     /// this field. They will be slashed when we finalize the block.
     byzantine_validators: Vec<Evidence>,
     /// Path to the base directory with DB data and configs
+    #[allow(dead_code)]
     base_dir: PathBuf,
     /// Path to the WASM directory for files used in the genesis block.
     wasm_dir: PathBuf,

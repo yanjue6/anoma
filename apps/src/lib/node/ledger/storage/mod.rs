@@ -18,6 +18,7 @@ use sparse_merkle_tree::blake2b::Blake2bHasher;
 use sparse_merkle_tree::traits::Hasher;
 use sparse_merkle_tree::H256;
 
+#[derive(Default)]
 pub struct PersistentStorageHasher(Blake2bHasher);
 
 pub type PersistentDB = rocksdb::RocksDB;
@@ -45,12 +46,6 @@ pub fn open(db_path: impl AsRef<Path>, chain_id: ChainId) -> PersistentStorage {
         address_gen: EstablishedAddressGen::new(
             "Privacy is a function of liberty.",
         ),
-    }
-}
-
-impl Default for PersistentStorageHasher {
-    fn default() -> Self {
-        Self(Blake2bHasher::default())
     }
 }
 
