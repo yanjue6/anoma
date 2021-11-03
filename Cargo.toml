@@ -21,6 +21,7 @@ tracing = {git = "https://github.com/tokio-rs/tracing/", branch = "v0.1.x"}
 tracing-core = {git = "https://github.com/tokio-rs/tracing/", branch = "v0.1.x"}
 
 [profile.release]
+debug = 1
 lto = true
 opt-level = 3
 panic = "unwind"
