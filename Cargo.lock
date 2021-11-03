@@ -5979,7 +5979,7 @@ dependencies = [
 [[package]]
 name = "tower-abci"
 version = "0.1.0"
-source = "git+https://github.com/heliaxdev/tower-abci?branch=tomas/tm-lowercase-node-id#d63c0d074ee1679529cc54da0c223c0e83a0230b"
+source = "git+https://github.com/heliaxdev/tower-abci?branch=tomas/tm-lowercase-node-id-fix-rx-select#8a88c53ef45b55bc4967e93b2f79460eb9414575"
 dependencies = [
  "bytes 1.1.0",
  "futures 0.3.17",
