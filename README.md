@@ -43,9 +43,24 @@ ANOMA_DEV=true make
 
 ### Using Nix
 
+You can get all development dependencies (including the Rust toolchain) by
+entering the shell environment defined in `shell.nix`:
+
+```shell
+nix-shell
+make
+```
+
+You can also build Anoma as a derivation (using `crate2nix`):
+
 ```shell
 nix-shell -p crate2nix --command "crate2nix generate"
 nix-build -A apps
+```
+
+and install it in your user environment:
+
+```shell
 nix-env -i ./result
 ```
 
