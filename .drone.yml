@@ -18,7 +18,7 @@ steps:
     pull: never
   - commands:
       - >-
-        echo "b9eaf3a9a51a5c386f296c45703b3df4b8e014b6042c11ba17484d03129e4a74 
+        echo "432654bb4e5da611d7be4b359c675025aac6f931ca579d916488267f59465d01 
         Makefile" | sha256sum -c -
       - >-
         echo "96f503edaeb65d5b75855c75ead35c6c3e394ee82ec6fd4aa15d0e7d9f1051d6 
