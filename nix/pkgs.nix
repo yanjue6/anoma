@@ -9,11 +9,26 @@ import <nixpkgs> {
   overlays = [
     rustOverlay
 
+    # Rust toolchains
     (self: super: {
         rustc = self.rust-bin.stable.${rustChannel}.minimal.override {
           targets = [ "x86_64-unknown-linux-gnu" "wasm32-unknown-unknown" ];
         };
-        inherit (self.rust-bin.nightly.${rustNightlyVersion}) rustfmt clippy miri;
+
+        rustNightly = self.rust-bin.nightly.${rustNightlyVersion};
+
+        cargo-nightly = self.runCommandNoCC "cargo-nightly" { buildInputs = [ self.makeWrapper ]; } ''
+          mkdir -p $out/bin
+          makeWrapper ${self.rustNightly.cargo}/bin/cargo $out/bin/cargo-nightly \
+            --prefix PATH : ${self.lib.makeBinPath [
+              (self.rustNightly.default.override {
+                targets = [ "x86_64-unknown-linux-gnu" "wasm32-unknown-unknown" ];
+              })
+
+              # XXX cargo-miri appears to be too heavily integrated with xargo/rustup. Idk how to make it work properly under nix.
+              self.rustNightly.miri
+            ]}
+        '';
       }
     )
 

@@ -30,6 +30,15 @@ After installation, the main `anoma` executable will be available on path.
 
 To find how to use it, check out the [User Guide section of the docs](https://anoma.github.io/anoma/user-guide/).
 
+If you are running NixOS or at least the Nix package manager, you may opt to
+install Anoma as a Nix derivation like so:
+
+```shell
+nix-shell --command "crate2nix generate"
+nix-build
+nix-env -i ./result
+```
+
 ## ⚙️ Development
 
 ```shell
@@ -43,25 +52,12 @@ ANOMA_DEV=true make
 
 ### Using Nix
 
-You can get all development dependencies (including the Rust toolchain) by
-entering the shell environment defined in `shell.nix`:
+If you are running NixOS or at least the Nix package manager, you may opt in to
+all the dependencies via Nix by simply entering the Nix shell environment:
 
 ```shell
 nix-shell
 make
-```
-
-You can also build Anoma as a derivation (using `crate2nix`):
-
-```shell
-nix-shell -p crate2nix --command "crate2nix generate"
-nix-build -A apps
-```
-
-and install it in your user environment:
-
-```shell
-nix-env -i ./result
 ```
 
 ### Before submitting a PR, pls make sure to run the following:

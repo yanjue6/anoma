@@ -1,4 +1,18 @@
-pkgs: with pkgs; {
+pkgs:
+
+with pkgs;
+
+let
+  # XXX by default the host platform is conservative so this does nothing without overriding in config.
+  mkCargoTargetFeatures = platform: lib.concatStringsSep "," (
+    lib.optional (platform.sse3Support) "sse2"
+    ++ lib.optional (platform.sse4_1Support) "sse4.1"
+    ++ lib.optional (platform.sse4_2Support) "sse4.2"
+  );
+in
+
+{
+  mkCargoTargetFeatures = mkCargoTargetFeatures;
   prost-build = attrs: { buildInputs = [ protobuf ]; };
   libp2p-core = attrs: { buildInputs = [ protobuf ]; PROTOC = "${protobuf}/bin/protoc"; };
   libp2p-plaintext = attrs: { buildInputs = [ protobuf ]; PROTOC = "${protobuf}/bin/protoc"; };
@@ -29,10 +43,7 @@ pkgs: with pkgs; {
     # we need to set that variable.
     #
     # See: https://github.com/rust-rocksdb/rust-rocksdb/commit/81a9edea83473012378e808606cdd92c1212c076#diff-7377ccc9f5cb3386318bd8afcd84814e7dd6d9b40efa909fb2dc218ecb779499
-    #
-    # XXX empty string is the most portable, but it can't take
-    # advantage of fast vectorization instructions on newer CPUs.
-    CARGO_CFG_TARGET_FEATURE = "";
+    CARGO_CFG_TARGET_FEATURE = mkCargoTargetFeatures pkgs.hostPlatform;
   };
 
   anoma = attrs: {

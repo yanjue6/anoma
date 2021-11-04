@@ -2,13 +2,10 @@ cargo := $(env) cargo
 rustup := $(env) rustup
 # Nightly build is currently used for rustfmt and clippy.
 nightly := $(shell cat ../../rust-nightly-version)
-
 ifdef IN_NIX_SHELL
-cargo-clippy := cargo-clippy
-cargo-fmt := cargo-fmt
+cargo-nightly := cargo-nightly
 else
-cargo-clippy := $(cargo) +$(nightly) clippy
-cargo-fmt := $(cargo) +$(nightly) fmt
+cargo-nightly := $(cargo) +$(nightly)
 endif
 
 # All the wasms that can be built from this source, switched via Cargo features
@@ -43,10 +40,10 @@ clippy:
 	$(foreach wasm,$(wasms),make clippy_$(wasm) && ) true
 
 fmt:
-	$(cargo-fmt) --all
+	$(cargo-nightly) fmt --all
 
 fmt-check:
-	$(cargo-fmt) --all -- --check
+	$(cargo-nightly) fmt --all -- --check
 
 # Build a selected wasm
 # Linker flag "-s" for stripping (https://github.com/rust-lang/cargo/issues/3483#issuecomment-431209957)
@@ -68,7 +65,7 @@ $(patsubst %,watch_%,$(wasms)): watch_%:
 
 # `cargo clippy` one of the wasms, e.g. `make clippy_tx_transfer`
 $(patsubst %,clippy_%,$(wasms)): clippy_%:
-	$(cargo-clippy) --all-targets --features $* -- -D warnings
+	$(cargo-nightly) clippy --all-targets --features $* -- -D warnings
 
 clean-wasm = rm ../$(wasm).wasm
 clean:
